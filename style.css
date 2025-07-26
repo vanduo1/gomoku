@@ -1,0 +1,782 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Roboto:wght@400;500;700&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Protest+Revolution&family=Road+Rage&display=swap");
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+body {
+  font-family: "Roboto", "Orbitron", "Arial", sans-serif;
+  background: #87ceeb;
+  background-image: radial-gradient(
+      circle at 25% 25%,
+      #98d8e8 0%,
+      transparent 50%
+    ),
+    radial-gradient(circle at 75% 75%, #76c4d4 0%, transparent 50%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  line-height: 1.6;
+}
+
+/* Common Screen Styles */
+.screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Auth Screens */
+.auth-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.auth-container {
+  background: #ffe4b5;
+  border: 4px solid #ff6347;
+  border-radius: 0;
+  box-shadow: 0 0 0 2px #8b4513, 4px 4px 0 #8b4513, 8px 8px 0 #d2691e;
+  padding: 32px;
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  color: #8b0000;
+  position: relative;
+}
+
+.auth-container::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #ff69b4, #00ced1, #32cd32, #ffd700);
+  z-index: -1;
+  border-radius: 0;
+}
+
+.auth-container h1 {
+  color: #8b0000;
+  margin-bottom: 16px;
+  font-size: 30px;
+  text-shadow: 2px 2px 0 #fff;
+  letter-spacing: 2px;
+  font-family: "Press Start 2P", monospace;
+}
+
+.auth-container h2 {
+  color: #2e8b57;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 0 #fff;
+  font-size: 30px;
+  letter-spacing: 1px;
+  font-family: "Road Rage", sans-serif;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 500;
+  color: #8b0000;
+  font-size: 25px;
+  letter-spacing: 1px;
+  font-family: "Road Rage", sans-serif;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 5px 10px;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  font-size: 20px;
+  font-family: "Road Rage", sans-serif;
+  background: #fff8dc;
+  color: #8b0000;
+  transition: none;
+  box-shadow: inset 2px 2px 0 #8b4513;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #ff6347;
+  box-shadow: inset 2px 2px 0 #8b4513, 0 0 0 2px #ff6347;
+}
+
+.auth-btn {
+  background: #ff6347;
+  color: #fff;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  padding: 7px 10px;
+  font-size: 25px;
+  font-weight: 500;
+  font-family: "Road Rage", sans-serif;
+  cursor: pointer;
+  transition: none;
+  box-shadow: 2px 2px 0 #8b4513;
+  margin-top: 16px;
+  letter-spacing: 1px;
+}
+
+.auth-btn:hover {
+  background: #ff7f50;
+  transform: none;
+}
+
+.auth-btn:active {
+  box-shadow: 1px 1px 0 #8b4513;
+  transform: translate(1px, 1px);
+}
+
+.error-message {
+  color: #dc143c;
+  font-size: 20px;
+  margin-top: 8px;
+  min-height: 16px;
+  font-family: "Road Rage", sans-serif;
+}
+
+.auth-switch {
+  margin-top: 16px;
+  color: #2e8b57;
+  font-size: 20px;
+  font-family: "Road Rage", sans-serif;
+}
+
+.auth-footer {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 2px solid #ff6347;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #00ced1;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 20px;
+  font-family: "Road Rage", sans-serif;
+}
+
+.link-btn:hover {
+  color: #20b2aa;
+}
+
+/* Leaderboard Styles */
+.leaderboard-container {
+  background: #ffe4b5;
+  border: 4px solid #ff6347;
+  border-radius: 0;
+  box-shadow: 0 0 0 2px #8b4513, 4px 4px 0 #8b4513, 8px 8px 0 #d2691e;
+  padding: 24px;
+  text-align: center;
+  max-width: 1000px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: #8b0000;
+}
+
+.leaderboard-container h1 {
+  color: #8b0000;
+  margin-bottom: 24px;
+  font-size: 40px;
+  text-shadow: 2px 2px 0 #fff;
+  letter-spacing: 2px;
+  font-family: "Road Rage", monospace;
+}
+
+.leaderboard-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #fff8dc;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  flex-wrap: wrap;
+}
+
+.leaderboard-table-container {
+  overflow-x: auto;
+  margin-bottom: 24px;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 #8b4513;
+}
+
+#leaderboardTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff8dc;
+  border-radius: 0;
+  overflow: hidden;
+  font-size: 20px;
+  font-family: "Road Rage", sans-serif;
+}
+
+#leaderboardTable th {
+  background: #deb887;
+  color: #8b0000;
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 20px;
+  border: 1px solid #8b4513;
+  letter-spacing: 1px;
+}
+
+#leaderboardTable td {
+  padding: 5px 8px;
+  text-align: center;
+  border: 1px solid #8b4513;
+  font-size: 20px;
+  color: #8b0000;
+  background: #ffe4b5;
+}
+
+#leaderboardTable tbody tr:hover {
+  background: #f0e68c;
+}
+
+#leaderboardTable tbody tr:nth-child(odd) {
+  background: #fff8dc;
+}
+
+.rank-1 {
+  background: #ffd700 !important;
+  color: #8b0000 !important;
+  font-weight: 500;
+}
+
+.rank-2 {
+  background: #c0c0c0 !important;
+  color: #000 !important;
+  font-weight: 500;
+}
+
+.rank-3 {
+  background: #cd7f32 !important;
+  color: #fff !important;
+  font-weight: 500;
+}
+
+.level-badge {
+  display: inline-block;
+  padding: 0px 5px;
+  border: 1px solid #8b4513;
+  border-radius: 0;
+  font-size: 20px;
+  font-weight: 500;
+  color: #fff;
+  background: #32cd32;
+}
+
+.leaderboard-footer {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.secondary-btn {
+  background: #4682b4;
+  color: #fff;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  padding: 5px 16px;
+  font-size: 20px;
+  font-family: "Road Rage", monospace;
+  cursor: pointer;
+  transition: none;
+  box-shadow: 2px 2px 0 #8b4513;
+}
+
+.secondary-btn:hover {
+  background: #5f9ea0;
+  transform: none;
+}
+
+.secondary-btn:active {
+  box-shadow: 1px 1px 0 #8b4513;
+  transform: translate(1px, 1px);
+}
+
+/* Game Screen */
+.container {
+  background: #ffe4b5;
+  border: 4px solid #ff6347;
+  border-radius: 0;
+  box-shadow: 0 0 0 2px #8b4513, 4px 4px 0 #8b4513, 8px 8px 0 #d2691e;
+  padding: 24px;
+  text-align: center;
+  max-width: 900px;
+  width: 100%;
+  color: #8b0000;
+}
+
+.user-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #fff8dc;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.user-details span {
+  color: #8b0000;
+  font-weight: 500;
+  font-size: 25px;
+  font-family: "Road Rage", sans-serif;
+}
+
+.user-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.stat {
+  font-size: 20px;
+  color: #2e8b57;
+  font-weight: 500;
+  font-family: "Road Rage", sans-serif;
+}
+
+.user-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.logout-btn {
+  background: #ff6347;
+  color: #fff;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  padding: 5px 12px;
+  font-size: 20px;
+  font-family: "Road Rage", monospace;
+  cursor: pointer;
+  transition: none;
+  box-shadow: 2px 2px 0 #8b4513;
+}
+
+.logout-btn:hover {
+  background: #ff7f50;
+}
+
+.logout-btn:active {
+  box-shadow: 1px 1px 0 #8b4513;
+  transform: translate(1px, 1px);
+}
+
+h1 {
+  color: #8b0000;
+  margin-bottom: 24px;
+  font-size: 20px;
+  text-shadow: 2px 2px 0 #fff;
+  letter-spacing: 2px;
+  font-family: "Press Start 2P", monospace;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #fff8dc;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.control-group label {
+  font-weight: 500;
+  color: #8b0000;
+  font-size: 20px;
+  letter-spacing: 1px;
+  font-family: "Road Rage", sans-serif;
+}
+
+select {
+  padding: 8px 12px;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  font-size: 20px;
+  font-family: "Road Rage", sans-serif;
+  background: #ffe4b5;
+  color: #8b0000;
+  cursor: pointer;
+  transition: none;
+}
+
+select:hover {
+  border-color: #ff6347;
+}
+
+select:focus {
+  outline: none;
+  border-color: #ff6347;
+  box-shadow: 0 0 0 2px #ff6347;
+}
+
+button {
+  background: #ff6347;
+  color: #fff;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  padding: 5px 20px;
+  font-size: 25px;
+  font-family: "Road Rage", monospace;
+  cursor: pointer;
+  transition: none;
+  box-shadow: 2px 2px 0 #8b4513;
+  letter-spacing: 1px;
+}
+
+button:hover {
+  background: #ff7f50;
+  transform: none;
+}
+
+button:active {
+  box-shadow: 1px 1px 0 #8b4513;
+  transform: translate(1px, 1px);
+}
+
+.game-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #fff8dc;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#status {
+  font-size: 25px;
+  font-weight: 500;
+  color: #dc143c;
+  letter-spacing: 1px;
+  font-family: "Road Rage", sans-serif;
+}
+
+#score {
+  display: flex;
+  gap: 16px;
+  font-weight: 500;
+  color: #8b0000;
+  font-family: "Road Rage", sans-serif;
+}
+
+#score span {
+  padding: 4px 8px;
+  background: #ffe4b5;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  font-size: 20px;
+}
+
+.board {
+  display: grid;
+  gap: 2px;
+  align-self: center;
+  justify-items: center;
+  margin: 24px auto;
+  padding: 8px;
+  background: #8b4513;
+  border: 4px solid #ff6347;
+  border-radius: 0;
+  box-shadow: 0 0 0 2px #8b4513, 4px 4px 0 #d2691e;
+  max-width: 300px;
+}
+
+.cell {
+  background: #fff8dc;
+  border: 2px solid #deb887;
+  border-radius: 0;
+  font-size: 20px;
+  font-family: "Press Start 2P", monospace;
+  cursor: pointer;
+  transition: none;
+  position: relative;
+  overflow: hidden;
+  color: #8b0000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cell:hover {
+  background: #ffe4b5;
+  border-color: #ff6347;
+}
+
+.cell:active {
+  background: #f0e68c;
+}
+
+.cell.x {
+  color: #dc143c;
+  background: #ffe4b5;
+  border-color: #dc143c;
+}
+
+.cell.o {
+  color: #00ced1;
+  background: #ffe4b5;
+  border-color: #00ced1;
+}
+
+.cell.winning {
+  background: #ffd700 !important;
+  color: #8b0000 !important;
+  border-color: #8b4513 !important;
+  animation: pixelPulse 0.6s ease-in-out;
+}
+
+@keyframes pixelPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cell.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background: #deb887;
+}
+
+.ai-info {
+  margin-top: 16px;
+}
+
+#aiThinking {
+  color: #ca1c1c;
+  font-weight: 500;
+  font-size: 20px;
+  animation: pixelThinking 1.5s ease-in-out infinite;
+  letter-spacing: 1px;
+  font-family: "Road Rage", sans-serif;
+}
+
+@keyframes pixelThinking {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+#evaluationInfo {
+  margin-top: 32px;
+  padding: 8px;
+  background: #fff8dc;
+  border: 2px solid #8b4513;
+  border-radius: 0;
+  font-size: 20px;
+  color: #2e8b57;
+  font-family: "Road Rage", sans-serif;
+}
+
+/* Notification Styles */
+.notification {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.notification-content {
+  background: #ffe4b5;
+  padding: 24px;
+  border: 4px solid #ff6347;
+  border-radius: 0;
+  text-align: center;
+  box-shadow: 0 0 0 2px #8b4513, 4px 4px 0 #8b4513, 8px 8px 0 #d2691e;
+  max-width: 400px;
+  width: 90%;
+  color: #8b0000;
+}
+
+.notification-content h3 {
+  color: #8b0000;
+  margin-bottom: 12px;
+  font-size: 16px;
+  letter-spacing: 1px;
+  font-family: "Press Start 2P", monospace;
+}
+
+.notification-content p {
+  color: #2e8b57;
+  margin-bottom: 16px;
+  font-size: 20px;
+  line-height: 1.6;
+  font-family: "Road Rage", sans-serif;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .leaderboard-container {
+    padding: 16px;
+    max-width: 95%;
+  }
+
+  .leaderboard-controls {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  #leaderboardTable th,
+  #leaderboardTable td {
+    padding: 2px 4px;
+    font-size: 20px;
+  }
+
+  .user-info {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .user-details {
+    align-items: center;
+  }
+
+  .user-stats {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .auth-container {
+    padding: 24px 16px;
+  }
+
+  .container {
+    padding: 16px;
+  }
+
+  h1 {
+    font-size: 16px;
+  }
+
+  .controls {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .game-info {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  #score {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .cell {
+    font-size: 18px;
+  }
+
+  .leaderboard-footer {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 400px) {
+  .auth-container {
+    padding: 16px;
+  }
+
+  .cell {
+    font-size: 16px;
+  }
+
+  #score {
+    gap: 8px;
+  }
+
+  #score span {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+
+  #leaderboardTable th,
+  #leaderboardTable td {
+    padding: 2px 2px;
+    font-size: 8px;
+  }
+}

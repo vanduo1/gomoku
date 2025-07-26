@@ -1,0 +1,957 @@
+// User Management System
+class UserManager {
+  constructor() {
+    this.currentUser = null;
+    this.users = this.loadUsers();
+  }
+
+  loadUsers() {
+    const saved = JSON.parse(localStorage.getItem("caroUsers") || "[]");
+    // Ensure all users have required properties
+    return saved.map((user) => ({
+      username: user.username,
+      password: user.password,
+      stats: {
+        wins: user.stats?.wins || 0,
+        losses: user.stats?.losses || 0,
+        draws: user.stats?.draws || 0,
+        totalGames: user.stats?.totalGames || 0,
+        points: user.stats?.points || 0,
+        level: user.stats?.level || 1,
+        ...user.stats,
+      },
+    }));
+  }
+
+  saveUsers() {
+    localStorage.setItem("caroUsers", JSON.stringify(this.users));
+  }
+
+  register(username, password) {
+    // Check if username already exists
+    if (this.users.find((user) => user.username === username)) {
+      throw new Error("Tên đăng nhập đã tồn tại!");
+    }
+
+    if (username.length < 3) {
+      throw new Error("Tên đăng nhập phải có ít nhất 3 ký tự!");
+    }
+
+    if (password.length < 4) {
+      throw new Error("Mật khẩu phải có ít nhất 4 ký tự!");
+    }
+
+    const newUser = {
+      username,
+      password,
+      stats: {
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        totalGames: 0,
+        points: 0,
+        level: 1,
+      },
+    };
+
+    this.users.push(newUser);
+    this.saveUsers();
+    return newUser;
+  }
+
+  login(username, password) {
+    const user = this.users.find(
+      (u) => u.username === username && u.password === password
+    );
+    if (!user) {
+      throw new Error("Tên đăng nhập hoặc mật khẩu không đúng!");
+    }
+    this.currentUser = user;
+    return user;
+  }
+
+  logout() {
+    this.currentUser = null;
+  }
+
+  updateUserStats(result) {
+    if (!this.currentUser) return;
+
+    const stats = this.currentUser.stats;
+    stats.totalGames++;
+
+    switch (result) {
+      case "win":
+        stats.wins++;
+        stats.points += 10;
+        break;
+      case "loss":
+        stats.losses++;
+        stats.points += 1;
+        break;
+      case "draw":
+        stats.draws++;
+        stats.points += 3;
+        break;
+    }
+
+    // Calculate level based on points
+    const newLevel = Math.floor(stats.points / 50) + 1;
+    const oldLevel = stats.level;
+    stats.level = newLevel;
+
+    this.saveUsers();
+
+    // Show level up notification
+    if (newLevel > oldLevel) {
+      this.showLevelUpNotification(newLevel);
+    }
+
+    return { levelUp: newLevel > oldLevel, newLevel };
+  }
+
+  showLevelUpNotification(level) {
+    document.getElementById("newLevelText").textContent = level;
+    document.getElementById("levelUpNotification").classList.remove("hidden");
+  }
+
+  getUserLevel(points) {
+    const level = Math.floor(points / 50) + 1;
+    if (level >= 100) return "Grandmaster";
+    if (level >= 50) return "Master";
+    if (level >= 25) return "Expert";
+    if (level >= 10) return "Advanced";
+    if (level >= 5) return "Amateur";
+    return "Beginner";
+  }
+
+  getLeaderboard(sortBy = "winRate") {
+    const leaderboard = this.users.map((user) => ({
+      ...user,
+      winRate:
+        user.stats.totalGames > 0
+          ? ((user.stats.wins / user.stats.totalGames) * 100).toFixed(1)
+          : 0,
+    }));
+
+    return leaderboard.sort((a, b) => {
+      switch (sortBy) {
+        case "winRate":
+          if (a.stats.totalGames === 0 && b.stats.totalGames === 0) return 0;
+          if (a.stats.totalGames === 0) return 1;
+          if (b.stats.totalGames === 0) return -1;
+          return parseFloat(b.winRate) - parseFloat(a.winRate);
+        case "totalWins":
+          return b.stats.wins - a.stats.wins;
+        case "totalGames":
+          return b.stats.totalGames - a.stats.totalGames;
+        case "points":
+          return b.stats.points - a.stats.points;
+        default:
+          return 0;
+      }
+    });
+  }
+}
+
+// Enhanced TicTacToe AI Game with User Management
+class TicTacToeAI {
+  constructor() {
+    this.board = [];
+    this.size = 5;
+    this.currentPlayer = "X";
+    this.gameMode = "ai"; // NEW: chế độ chơi (ai | two)
+    this.gameOver = false;
+    this.humanPlayer = "X";
+    this.aiPlayer = "O";
+    this.maxDepth = 3;
+    this.isAITurn = false;
+    // Mở rộng điểm số để hỗ trợ 2 chế độ
+    this.scores = { human: 0, ai: 0, tie: 0, x: 0, o: 0 };
+    this.userManager = new UserManager();
+
+    this.setupEventListeners();
+    this.showLoginScreen();
+  }
+
+  setupEventListeners() {
+    // Auth event listeners
+    document.getElementById("loginForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.handleLogin();
+    });
+
+    document.getElementById("registerForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.handleRegister();
+    });
+
+    document.getElementById("showRegister").addEventListener("click", () => {
+      this.showRegisterScreen();
+    });
+
+    document.getElementById("showLogin").addEventListener("click", () => {
+      this.showLoginScreen();
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      this.handleLogout();
+    });
+
+    // Leaderboard event listeners
+    document.getElementById("showLeaderboard").addEventListener("click", () => {
+      this.showLeaderboardScreen();
+    });
+
+    document
+      .getElementById("showLeaderboardFromLogin")
+      .addEventListener("click", () => {
+        this.showLeaderboardScreen();
+      });
+
+    document.getElementById("backToLogin").addEventListener("click", () => {
+      this.showLoginScreen();
+    });
+
+    document.getElementById("backToGame").addEventListener("click", () => {
+      this.showGameScreen();
+    });
+
+    document
+      .getElementById("refreshLeaderboard")
+      .addEventListener("click", () => {
+        this.updateLeaderboard();
+      });
+
+    document.getElementById("sortBy").addEventListener("change", () => {
+      this.updateLeaderboard();
+    });
+
+    // Level up notification
+    document.getElementById("closeLevelUp").addEventListener("click", () => {
+      document.getElementById("levelUpNotification").classList.add("hidden");
+    });
+
+    // Game event listeners
+    document.getElementById("newGame").addEventListener("click", () => {
+      this.initializeGame();
+    });
+
+    document.getElementById("boardSize").addEventListener("change", () => {
+      this.initializeGame();
+    });
+
+    // THÊM: lắng nghe thay đổi chế độ chơi
+    const gameModeSel = document.getElementById("gameMode");
+    if (gameModeSel) {
+      gameModeSel.addEventListener("change", () => {
+        this.gameMode = gameModeSel.value; // Cập nhật chế độ chơi hiện tại
+        this.updateFirstPlayerVisibility(); // Ẩn/hiện tuỳ chọn người chơi đầu
+        this.initializeGame();
+      });
+    }
+
+    document.getElementById("firstPlayer").addEventListener("change", () => {
+      this.initializeGame();
+    });
+  }
+
+  // Hiển thị/ẩn lựa chọn người chơi đầu dựa trên chế độ chơi
+  updateFirstPlayerVisibility() {
+    const firstPlayerGroup = document.getElementById("firstPlayer")?.parentElement;
+    if (!firstPlayerGroup) return;
+    if (this.gameMode === "two") {
+      firstPlayerGroup.classList.add("hidden");
+    } else {
+      firstPlayerGroup.classList.remove("hidden");
+    }
+  }
+
+  // Screen Management
+  hideAllScreens() {
+    document.getElementById("loginScreen").classList.add("hidden");
+    document.getElementById("registerScreen").classList.add("hidden");
+    document.getElementById("leaderboardScreen").classList.add("hidden");
+    document.getElementById("gameScreen").classList.add("hidden");
+  }
+
+  showLoginScreen() {
+    this.hideAllScreens();
+    document.getElementById("loginScreen").classList.remove("hidden");
+    document.getElementById("loginError").textContent = "";
+    document.getElementById("loginUsername").value = "";
+    document.getElementById("loginPassword").value = "";
+  }
+
+  showRegisterScreen() {
+    this.hideAllScreens();
+    document.getElementById("registerScreen").classList.remove("hidden");
+    document.getElementById("registerError").textContent = "";
+    document.getElementById("registerUsername").value = "";
+    document.getElementById("registerPassword").value = "";
+    document.getElementById("confirmPassword").value = "";
+  }
+
+  showGameScreen() {
+    this.hideAllScreens();
+    document.getElementById("gameScreen").classList.remove("hidden");
+    this.updateUserInfo();
+    this.initializeGame();
+  }
+
+  showLeaderboardScreen() {
+    this.hideAllScreens();
+    document.getElementById("leaderboardScreen").classList.remove("hidden");
+    this.updateLeaderboard();
+
+    // Show/hide back to game button based on login status
+    const backToGameBtn = document.getElementById("backToGame");
+    if (this.userManager.currentUser) {
+      backToGameBtn.classList.remove("hidden");
+    } else {
+      backToGameBtn.classList.add("hidden");
+    }
+  }
+
+  // Authentication Methods
+  handleLogin() {
+    const username = document.getElementById("loginUsername").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    const errorElement = document.getElementById("loginError");
+
+    try {
+      this.userManager.login(username, password);
+      this.showGameScreen();
+    } catch (error) {
+      errorElement.textContent = error.message;
+    }
+  }
+
+  handleRegister() {
+    const username = document.getElementById("registerUsername").value.trim();
+    const password = document.getElementById("registerPassword").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+    const errorElement = document.getElementById("registerError");
+
+    if (password !== confirmPassword) {
+      errorElement.textContent = "Mật khẩu xác nhận không khớp!";
+      return;
+    }
+
+    try {
+      this.userManager.register(username, password);
+      this.userManager.login(username, password);
+      this.showGameScreen();
+    } catch (error) {
+      errorElement.textContent = error.message;
+    }
+  }
+
+  handleLogout() {
+    this.userManager.logout();
+    this.showLoginScreen();
+  }
+
+  updateUserInfo() {
+    const user = this.userManager.currentUser;
+    if (!user) return;
+
+    document.getElementById("currentUser").textContent = user.username;
+    document.getElementById("userLevel").textContent = user.stats.level;
+    document.getElementById("userPoints").textContent = user.stats.points;
+  }
+
+  updateLeaderboard() {
+    const sortBy = document.getElementById("sortBy").value;
+    const leaderboard = this.userManager.getLeaderboard(sortBy);
+    const tbody = document.getElementById("leaderboardBody");
+
+    tbody.innerHTML = "";
+
+    leaderboard.forEach((user, index) => {
+      const row = document.createElement("tr");
+      const rank = index + 1;
+
+      // Add rank styling
+      if (rank === 1) row.classList.add("rank-1");
+      else if (rank === 2) row.classList.add("rank-2");
+      else if (rank === 3) row.classList.add("rank-3");
+
+      const levelText = this.userManager.getUserLevel(user.stats.points);
+      const levelClass = levelText.toLowerCase().replace(" ", "-");
+
+      row.innerHTML = `
+        <td>${rank}</td>
+        <td>${user.username}</td>
+        <td>${user.stats.wins}</td>
+        <td>${user.stats.losses}</td>
+        <td>${user.stats.draws}</td>
+        <td>${user.stats.totalGames}</td>
+        <td>${user.winRate}%</td>
+        <td>${user.stats.points}</td>
+        <td><span class="level-badge level-${levelClass}">${levelText}</span></td>
+      `;
+
+      tbody.appendChild(row);
+    });
+  }
+
+  // Game Logic Methods (keeping existing methods and adding integration)
+  initializeGame() {
+    this.size = parseInt(document.getElementById("boardSize").value);
+    this.gameMode = document.getElementById("gameMode")
+      ? document.getElementById("gameMode").value
+      : "ai";
+    // this.maxDepth = parseInt(document.getElementById("difficulty").value);
+    this.maxDepth = this.getOptimalDepth(this.size);
+    this.board = Array(this.size)
+      .fill()
+      .map(() => Array(this.size).fill(""));
+    this.gameOver = false;
+
+    // Cập nhật hiển thị lựa chọn người chơi đầu (ẩn khi chế độ 2 người)
+    this.updateFirstPlayerVisibility();
+
+    if (this.gameMode === "ai") {
+      // AI mode (giữ logic cũ)
+      const firstPlayer = document.getElementById("firstPlayer").value;
+      if (firstPlayer === "human") {
+        this.currentPlayer = "X";
+        this.humanPlayer = "X";
+        this.aiPlayer = "O";
+        this.isAITurn = false;
+      } else {
+        this.currentPlayer = "O";
+        this.humanPlayer = "O";
+        this.aiPlayer = "X";
+        this.isAITurn = true;
+      }
+    } else {
+      // Two-player mode
+      this.currentPlayer = "X"; // người đăng nhập luôn là X
+      this.humanPlayer = "X"; // để tái sử dụng updateUserStats
+      this.aiPlayer = ""; // không dùng
+      this.isAITurn = false;
+    }
+
+    this.createBoard();
+    this.updateStatus();
+    this.updateScore();
+
+    // Nếu AI đi trước, thực hiện nước đi
+    if (this.gameMode === "ai" && this.isAITurn) {
+      setTimeout(() => this.makeAIMove(), 500);
+    }
+  }
+
+  // Tối ưu độ sâu dựa trên kích thước bàn chơi
+  getOptimalDepth(size) {
+    if (size <= 3) return 9; // Bàn nhỏ có thể tìm kiếm sâu
+    if (size <= 5) return 4;
+    if (size <= 7) return 3;
+    if (size <= 9) return 2;
+    return 1; // Bàn rất lớn chỉ dùng độ sâu 1
+  }
+
+  createBoard() {
+    const boardElement = document.getElementById("gameBoard");
+    boardElement.innerHTML = "";
+    boardElement.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
+    let boarSize = 0;
+    switch (this.size) {
+      case 3:
+        boarSize = 240;
+        break;
+      case 4:
+        boarSize = 300;
+        break;
+      case 5:
+        boarSize = 360;
+        break;
+      case 6:
+        boarSize = 420;
+        break;
+      case 7:
+        boarSize = 480;
+        break;
+
+      case 9:
+        boarSize = 600;
+        break;
+      case 15:
+        boarSize = 840;
+        break;
+    }
+
+    boardElement.style.maxWidth = `${boarSize}px`;
+
+    // Tính toán kích thước cell dựa trên kích thước board
+    const cellSize = Math.max(30, Math.min(60, 600 / this.size));
+
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        const cell = document.createElement("button");
+        cell.className = "cell";
+        cell.dataset.row = i;
+        cell.dataset.col = j;
+        cell.style.width = `${cellSize}px`;
+        cell.style.height = `${cellSize}px`;
+        cell.addEventListener("click", (e) => this.handleCellClick(e));
+        boardElement.appendChild(cell);
+      }
+    }
+  }
+
+  handleCellClick(e) {
+    if (this.gameOver) return;
+
+    const row = parseInt(e.target.dataset.row);
+    const col = parseInt(e.target.dataset.col);
+
+    if (this.board[row][col] !== "") return;
+
+    if (this.gameMode === "ai") {
+      if (this.isAITurn) return;
+      this.makeMove(row, col, this.humanPlayer);
+
+      if (!this.gameOver) {
+        this.isAITurn = true;
+        setTimeout(() => this.makeAIMove(), 300);
+      }
+    } else {
+      // two player
+      this.makeMove(row, col, this.currentPlayer);
+    }
+  }
+
+  makeMove(row, col, player) {
+    this.board[row][col] = player;
+    this.updateBoard();
+
+    const winner = this.checkWinner();
+    if (winner) {
+      this.endGame(winner);
+    } else if (this.isBoardFull()) {
+      this.endGame("tie");
+    } else {
+      this.currentPlayer = this.currentPlayer === "X" ? "O" : "X";
+      this.updateStatus();
+    }
+  }
+
+  makeAIMove() {
+    if (this.gameOver) return;
+
+    document.getElementById("aiThinking").classList.remove("hidden");
+
+    // Sử dụng setTimeout để UI có thể cập nhật
+    setTimeout(() => {
+      const startTime = Date.now();
+      const bestMove = this.findBestMove();
+      const endTime = Date.now();
+
+      if (bestMove) {
+        this.makeMove(bestMove.row, bestMove.col, this.aiPlayer);
+
+        // Hiển thị thông tin đánh giá
+        const evalInfo = document.getElementById("evaluationInfo");
+        evalInfo.textContent = `AI đã suy nghĩ trong ${
+          endTime - startTime
+        }ms, đánh giá: ${bestMove.score}`;
+      }
+
+      document.getElementById("aiThinking").classList.add("hidden");
+      this.isAITurn = false;
+    }, 100);
+  }
+
+  // NEW: Lấy danh sách nước đi tiềm năng xung quanh các ô đã đánh để giảm không gian tìm kiếm
+  getCandidateMoves(radius = 2) {
+    const moves = [];
+    const added = new Set();
+
+    // Duyệt qua toàn bộ bàn cờ để tìm các ô đã đánh
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        if (this.board[i][j] !== "") {
+          // Xét các ô xung quanh trong phạm vi radius
+          for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+              if (dx === 0 && dy === 0) continue; // bỏ qua chính ô đang xét
+              const row = i + dx;
+              const col = j + dy;
+              if (
+                row >= 0 &&
+                row < this.size &&
+                col >= 0 &&
+                col < this.size &&
+                this.board[row][col] === ""
+              ) {
+                const key = `${row},${col}`;
+                if (!added.has(key)) {
+                  added.add(key);
+                  moves.push({ row, col });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Nếu bàn cờ trống, chọn ô trung tâm
+    if (moves.length === 0) {
+      const center = Math.floor(this.size / 2);
+      moves.push({ row: center, col: center });
+    }
+
+    return moves;
+  }
+
+  findBestMove() {
+    let bestScore = -Infinity;
+    let bestMove = null;
+
+    const candidateMoves = this.getCandidateMoves();
+
+    for (const move of candidateMoves) {
+      const { row, col } = move;
+      this.board[row][col] = this.aiPlayer;
+      const score = this.minimax(0, false, -Infinity, Infinity);
+      this.board[row][col] = "";
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = { row, col, score };
+      }
+    }
+
+    return bestMove;
+  }
+
+  minimax(depth, isMaximizing, alpha, beta) {
+    const winner = this.checkWinner();
+    if (winner === this.aiPlayer) return 100 - depth;
+    if (winner === this.humanPlayer) return -100 + depth;
+    if (this.isBoardFull() || depth >= this.maxDepth) {
+      return this.evaluateBoard();
+    }
+
+    // Sử dụng các nước đi tiềm năng để giảm số lượng nhánh
+    const moves = this.getCandidateMoves();
+
+    if (isMaximizing) {
+      let maxScore = -Infinity;
+      for (const move of moves) {
+        const { row, col } = move;
+        this.board[row][col] = this.aiPlayer;
+        const score = this.minimax(depth + 1, false, alpha, beta);
+        this.board[row][col] = "";
+        maxScore = Math.max(score, maxScore);
+        alpha = Math.max(alpha, score);
+        if (beta <= alpha) break; // cắt tỉa alpha-beta
+      }
+      return maxScore;
+    } else {
+      let minScore = Infinity;
+      for (const move of moves) {
+        const { row, col } = move;
+        this.board[row][col] = this.humanPlayer;
+        const score = this.minimax(depth + 1, true, alpha, beta);
+        this.board[row][col] = "";
+        minScore = Math.min(score, minScore);
+        beta = Math.min(beta, score);
+        if (beta <= alpha) break; // cắt tỉa alpha-beta
+      }
+      return minScore;
+    }
+  }
+
+  evaluateBoard() {
+    let score = 0;
+
+    // Đánh giá theo hàng, cột và đường chéo
+    score +=
+      this.evaluateLines(this.aiPlayer) - this.evaluateLines(this.humanPlayer);
+
+    // Thêm điểm cho vị trí trung tâm
+    const center = Math.floor(this.size / 2);
+    if (this.board[center][center] === this.aiPlayer) score += 3;
+    if (this.board[center][center] === this.humanPlayer) score -= 3;
+
+    return score;
+  }
+
+  evaluateLines(player) {
+    let score = 0;
+    const winLength = this.getWinLength();
+
+    // Đánh giá tất cả các đường có thể thắng
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        // Kiểm tra 4 hướng: ngang, dọc, chéo chính, chéo phụ
+        const directions = [
+          [0, 1], // ngang
+          [1, 0], // dọc
+          [1, 1], // chéo chính
+          [1, -1], // chéo phụ
+        ];
+
+        for (const [dx, dy] of directions) {
+          score += this.evaluateLine(i, j, dx, dy, player, winLength);
+        }
+      }
+    }
+
+    return score;
+  }
+
+  evaluateLine(startRow, startCol, dx, dy, player, winLength) {
+    let score = 0;
+    let count = 0; // số quân của player trong đoạn
+    let empty = 0; // số ô trống trong đoạn
+    let blocked = 0; // số đầu bị chặn bởi quân đối phương hoặc biên
+
+    // Kiểm tra đường thẳng có độ dài winLength
+    for (let k = 0; k < winLength; k++) {
+      const row = startRow + k * dx;
+      const col = startCol + k * dy;
+
+      if (row < 0 || row >= this.size || col < 0 || col >= this.size) {
+        blocked++;
+        continue;
+      }
+
+      if (this.board[row][col] === player) {
+        count++;
+      } else if (this.board[row][col] === "") {
+        empty++;
+      } else {
+        blocked++;
+      }
+    }
+
+    // Không xét đoạn không có quân của player
+    if (count === 0) return 0;
+
+    // Công thức chấm điểm heuristic
+    if (blocked === 0) {
+      // Cả hai đầu đều mở
+      if (count === winLength - 1 && empty === 1) {
+        score += 100000; // sắp thắng
+      } else {
+        score += Math.pow(10, count); // 10, 100, 1000, ...
+      }
+    } else if (blocked === 1) {
+      // Một đầu bị chặn
+      if (count === winLength - 1 && empty === 1) {
+        score += 5000;
+      } else {
+        score += Math.pow(10, count - 1); // 1, 10, 100, ...
+      }
+    } else {
+      // Hai đầu đều bị chặn: giá trị thấp
+      if (count === winLength - 1 && empty === 0) {
+        // Đối thủ có thể thắng, vẫn nên quan tâm
+        score += 100;
+      }
+    }
+
+    return score;
+  }
+
+  checkWinner() {
+    const winLength = this.getWinLength();
+
+    // Kiểm tra hàng ngang
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j <= this.size - winLength; j++) {
+        const line = [];
+        for (let k = 0; k < winLength; k++) {
+          line.push({ row: i, col: j + k });
+        }
+        const winner = this.checkLine(line);
+        if (winner) {
+          this.highlightWinningLine(line);
+          return winner;
+        }
+      }
+    }
+
+    // Kiểm tra hàng dọc
+    for (let i = 0; i <= this.size - winLength; i++) {
+      for (let j = 0; j < this.size; j++) {
+        const line = [];
+        for (let k = 0; k < winLength; k++) {
+          line.push({ row: i + k, col: j });
+        }
+        const winner = this.checkLine(line);
+        if (winner) {
+          this.highlightWinningLine(line);
+          return winner;
+        }
+      }
+    }
+
+    // Kiểm tra đường chéo chính
+    for (let i = 0; i <= this.size - winLength; i++) {
+      for (let j = 0; j <= this.size - winLength; j++) {
+        const line = [];
+        for (let k = 0; k < winLength; k++) {
+          line.push({ row: i + k, col: j + k });
+        }
+        const winner = this.checkLine(line);
+        if (winner) {
+          this.highlightWinningLine(line);
+          return winner;
+        }
+      }
+    }
+
+    // Kiểm tra đường chéo phụ
+    for (let i = 0; i <= this.size - winLength; i++) {
+      for (let j = winLength - 1; j < this.size; j++) {
+        const line = [];
+        for (let k = 0; k < winLength; k++) {
+          line.push({ row: i + k, col: j - k });
+        }
+        const winner = this.checkLine(line);
+        if (winner) {
+          this.highlightWinningLine(line);
+          return winner;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  checkLine(line) {
+    const firstCell = this.board[line[0].row][line[0].col];
+    if (firstCell === "") return null;
+
+    for (const cell of line) {
+      if (this.board[cell.row][cell.col] !== firstCell) {
+        return null;
+      }
+    }
+
+    return firstCell;
+  }
+
+  highlightWinningLine(line) {
+    for (const cell of line) {
+      const cellElement = document.querySelector(
+        `[data-row="${cell.row}"][data-col="${cell.col}"]`
+      );
+      cellElement.classList.add("winning");
+    }
+  }
+
+  getWinLength() {
+    // Độ dài cần thiết để thắng dựa trên kích thước bàn chơi
+    if (this.size <= 3) return 3;
+    if (this.size <= 5) return 4;
+    return 5;
+  }
+
+  isBoardFull() {
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        if (this.board[i][j] === "") return false;
+      }
+    }
+    return true;
+  }
+
+  updateBoard() {
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        const cell = document.querySelector(
+          `[data-row="${i}"][data-col="${j}"]`
+        );
+        const value = this.board[i][j];
+        cell.textContent = value;
+        cell.className = "cell";
+        if (value === "X") cell.classList.add("x");
+        if (value === "O") cell.classList.add("o");
+      }
+    }
+  }
+
+  updateStatus() {
+    const status = document.getElementById("status");
+    if (this.gameOver) return;
+
+    if (this.gameMode === "ai") {
+      if (this.isAITurn) {
+        status.textContent = "Lượt của AI";
+      } else {
+        status.textContent = `Lượt của bạn (${this.humanPlayer})`;
+      }
+    } else {
+      status.textContent = `Lượt của ${this.currentPlayer}`;
+    }
+  }
+
+  endGame(winner) {
+    this.gameOver = true;
+    const status = document.getElementById("status");
+
+    if (winner === "tie") {
+      status.textContent = "Hòa!";
+      this.scores.tie++;
+      this.userManager.updateUserStats("draw");
+    } else if (this.gameMode === "ai") {
+      // AI mode
+      if (winner === this.humanPlayer) {
+        status.textContent = "Bạn thắng!";
+        this.scores.human++;
+        this.userManager.updateUserStats("win");
+      } else {
+        status.textContent = "AI thắng!";
+        this.scores.ai++;
+        this.userManager.updateUserStats("loss");
+      }
+    } else {
+      // Two player mode
+      if (winner === "X") {
+        status.textContent = "X thắng!";
+        this.scores.x++;
+        this.userManager.updateUserStats("win");
+      } else {
+        status.textContent = "O thắng!";
+        this.scores.o++;
+        this.userManager.updateUserStats("loss");
+      }
+    }
+
+    this.updateScore();
+    this.updateUserInfo(); // Update user info after game ends
+
+    // Vô hiệu hóa tất cả các ô
+    const cells = document.querySelectorAll(".cell");
+    cells.forEach((cell) => cell.classList.add("disabled"));
+  }
+
+  updateScore() {
+    if (this.gameMode === "ai") {
+      document.getElementById("playerXLabel").textContent = "Người";
+      document.getElementById("playerOLabel").textContent = "AI";
+      document.getElementById("playerXScore").textContent = this.scores.human;
+      document.getElementById("playerOScore").textContent = this.scores.ai;
+    } else {
+      document.getElementById("playerXLabel").textContent = "X";
+      document.getElementById("playerOLabel").textContent = "O";
+      document.getElementById("playerXScore").textContent = this.scores.x;
+      document.getElementById("playerOScore").textContent = this.scores.o;
+    }
+
+    document.getElementById("tieScore").textContent = this.scores.tie;
+  }
+}
+
+// Khởi tạo game khi trang được load
+document.addEventListener("DOMContentLoaded", () => {
+  new TicTacToeAI();
+});

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Caro AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sigmar+One&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Màn hình đăng nhập -->
+    <div id="loginScreen" class="auth-screen">
+      <div class="auth-container">
+        <h1>Game Caro AI</h1>
+        <h2>Đăng nhập</h2>
+
+        <form id="loginForm" class="auth-form">
+          <div class="form-group">
+            <label for="loginUsername">Tên đăng nhập:</label>
+            <input type="text" id="loginUsername" required />
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Mật khẩu:</label>
+            <input type="password" id="loginPassword" required />
+          </div>
+
+          <button type="submit" class="auth-btn">Đăng nhập</button>
+          <div id="loginError" class="error-message"></div>
+        </form>
+
+        <p class="auth-switch">
+          Chưa có tài khoản?
+          <button id="showRegister" class="link-btn">Đăng ký ngay</button>
+        </p>
+
+        <div class="auth-footer">
+          <button id="showLeaderboardFromLogin" class="link-btn">
+            Xem bảng xếp hạng
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Màn hình đăng ký -->
+    <div id="registerScreen" class="auth-screen hidden">
+      <div class="auth-container">
+        <h1>Game Caro AI</h1>
+        <h2>Đăng ký</h2>
+
+        <form id="registerForm" class="auth-form">
+          <div class="form-group">
+            <label for="registerUsername">Tên đăng nhập:</label>
+            <input type="text" id="registerUsername" required minlength="3" />
+          </div>
+
+          <div class="form-group">
+            <label for="registerPassword">Mật khẩu:</label>
+            <input
+              type="password"
+              id="registerPassword"
+              required
+              minlength="4"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Xác nhận mật khẩu:</label>
+            <input type="password" id="confirmPassword" required />
+          </div>
+
+          <button type="submit" class="auth-btn">Đăng ký</button>
+          <div id="registerError" class="error-message"></div>
+        </form>
+
+        <p class="auth-switch">
+          Đã có tài khoản?
+          <button id="showLogin" class="link-btn">Đăng nhập</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- Màn hình bảng xếp hạng -->
+    <div id="leaderboardScreen" class="screen hidden">
+      <div class="leaderboard-container">
+        <h1>Bảng Xếp Hạng</h1>
+
+        <div class="leaderboard-controls">
+          <div class="control-group">
+            <label for="sortBy">Sắp xếp theo:</label>
+            <select id="sortBy">
+              <option value="winRate">Tỷ lệ thắng</option>
+              <option value="totalWins">Tổng số thắng</option>
+              <option value="totalGames">Tổng số trận</option>
+              <option value="points">Điểm số</option>
+            </select>
+          </div>
+          <button id="refreshLeaderboard">Làm mới</button>
+        </div>
+
+        <div class="leaderboard-table-container">
+          <table id="leaderboardTable">
+            <thead>
+              <tr>
+                <th>Hạng</th>
+                <th>Tên người chơi</th>
+                <th>Thắng</th>
+                <th>Thua</th>
+                <th>Hòa</th>
+                <th>Tổng trận</th>
+                <th>Tỷ lệ thắng</th>
+                <th>Điểm số</th>
+                <th>Cấp độ</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardBody"></tbody>
+          </table>
+        </div>
+
+        <div class="leaderboard-footer">
+          <button id="backToLogin" class="secondary-btn">
+            Quay lại đăng nhập
+          </button>
+          <button id="backToGame" class="secondary-btn hidden">
+            Quay lại game
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Màn hình game chính -->
+    <div id="gameScreen" class="container hidden">
+      <div class="user-info">
+        <div class="user-details">
+          <span>Xin chào, <span id="currentUser"></span>!</span>
+          <div class="user-stats">
+            <span class="stat">Cấp độ: <span id="userLevel">1</span></span>
+            <span class="stat">Điểm: <span id="userPoints">0</span></span>
+          </div>
+        </div>
+        <div class="user-actions">
+          <button id="showLeaderboard" class="secondary-btn">
+            Bảng xếp hạng
+          </button>
+          <button id="logoutBtn" class="logout-btn">Đăng xuất</button>
+        </div>
+      </div>
+
+      <h1>Game Caro</h1>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="boardSize">Kích thước bàn chơi:</label>
+          <select id="boardSize">
+            <option value="3">3x3</option>
+            <option value="4">4x4</option>
+            <option value="5" selected>5x5</option>
+            <option value="6">6x6</option>
+            <option value="7">7x7</option>
+            <option value="9">9x9</option>
+            <option value="15">15x15</option>
+          </select>
+        </div>
+
+        <!-- THÊM: Chọn chế độ chơi -->
+        <div class="control-group">
+          <label for="gameMode">Chế độ chơi:</label>
+          <select id="gameMode">
+            <option value="ai" selected>Chơi với AI</option>
+            <option value="two">2 Người</option>
+          </select>
+        </div>
+
+        <!-- Giữ nguyên nhóm chọn người chơi đầu -->
+        <div class="control-group">
+          <label for="firstPlayer">Người chơi đầu:</label>
+          <select id="firstPlayer">
+            <option value="human" selected>Người</option>
+            <option value="ai">AI</option>
+          </select>
+        </div>
+
+        <button id="newGame">Game Mới</button>
+      </div>
+
+      <div class="game-info">
+        <div id="status">Lượt của bạn (X)</div>
+        <div id="score">
+          <span
+            ><span id="playerXLabel">Người</span>:
+            <span id="playerXScore">0</span></span
+          >
+          <span
+            ><span id="playerOLabel">AI</span>:
+            <span id="playerOScore">0</span></span
+          >
+          <span>Hòa: <span id="tieScore">0</span></span>
+        </div>
+      </div>
+
+      <div id="gameBoard" class="board"></div>
+
+      <div class="ai-info">
+        <div id="aiThinking" class="hidden">AI đang suy nghĩ...</div>
+        <div id="evaluationInfo"></div>
+      </div>
+
+      <!-- Thông báo level up -->
+      <div id="levelUpNotification" class="notification hidden">
+        <div class="notification-content">
+          <h3>Chúc mừng!</h3>
+          <p>Bạn đã lên cấp <span id="newLevelText"></span>!</p>
+          <button id="closeLevelUp">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
