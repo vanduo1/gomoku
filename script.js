@@ -264,6 +264,20 @@ class TicTacToeAI {
         this.initializeGame();
       });
       this.difficulty = difficultySel.value; // Khởi tạo giá trị độ khó
+      // Ẩn/hiện độ khó theo chế độ chơi
+      const difficultyGroup = difficultySel.parentElement;
+      const updateDifficultyVisibility = () => {
+        if (this.gameMode === "two") {
+          difficultyGroup.classList.add("hidden");
+        } else {
+          difficultyGroup.classList.remove("hidden");
+        }
+      };
+      const gameModeSel = document.getElementById("gameMode");
+      if (gameModeSel) {
+        gameModeSel.addEventListener("change", updateDifficultyVisibility);
+        updateDifficultyVisibility();
+      }
     }
   }
 
@@ -586,7 +600,7 @@ class TicTacToeAI {
     }, 100);
   }
 
-  // NEW: Lấy danh sách nước đi tiềm năng xung quanh các ô đã đánh để giảm không gian tìm kiếm
+  //Lấy danh sách nước đi tiềm năng xung quanh các ô đã đánh để giảm không gian tìm kiếm
   getCandidateMoves(radius = 2) {
     const moves = [];
     const added = new Set();
