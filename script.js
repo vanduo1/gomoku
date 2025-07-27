@@ -166,6 +166,7 @@ class TicTacToeAI {
     this.aiPlayer = "O";
     this.maxDepth = 3;
     this.isAITurn = false;
+    this.difficulty = "medium"; // NEW: thêm thuộc tính độ khó
     // Mở rộng điểm số để hỗ trợ 2 chế độ
     this.scores = { human: 0, ai: 0, tie: 0, x: 0, o: 0 };
     this.userManager = new UserManager();
@@ -254,11 +255,22 @@ class TicTacToeAI {
     document.getElementById("firstPlayer").addEventListener("change", () => {
       this.initializeGame();
     });
+
+    // Lắng nghe thay đổi độ khó
+    const difficultySel = document.getElementById("difficulty");
+    if (difficultySel) {
+      difficultySel.addEventListener("change", () => {
+        this.difficulty = difficultySel.value;
+        this.initializeGame();
+      });
+      this.difficulty = difficultySel.value; // Khởi tạo giá trị độ khó
+    }
   }
 
   // Hiển thị/ẩn lựa chọn người chơi đầu dựa trên chế độ chơi
   updateFirstPlayerVisibility() {
-    const firstPlayerGroup = document.getElementById("firstPlayer")?.parentElement;
+    const firstPlayerGroup =
+      document.getElementById("firstPlayer")?.parentElement;
     if (!firstPlayerGroup) return;
     if (this.gameMode === "two") {
       firstPlayerGroup.classList.add("hidden");
@@ -547,17 +559,26 @@ class TicTacToeAI {
     // Sử dụng setTimeout để UI có thể cập nhật
     setTimeout(() => {
       const startTime = Date.now();
-      const bestMove = this.findBestMove();
+      let move;
+      if (this.difficulty === "easy") {
+        // EASY: AI chọn nước đi ngẫu nhiên
+        const candidates = this.getCandidateMoves();
+        move = candidates[Math.floor(Math.random() * candidates.length)];
+        move.score = 0;
+      } else {
+        // MEDIUM & HARD: AI dùng minimax
+        move = this.findBestMove();
+      }
       const endTime = Date.now();
 
-      if (bestMove) {
-        this.makeMove(bestMove.row, bestMove.col, this.aiPlayer);
+      if (move) {
+        this.makeMove(move.row, move.col, this.aiPlayer);
 
         // Hiển thị thông tin đánh giá
         const evalInfo = document.getElementById("evaluationInfo");
         evalInfo.textContent = `AI đã suy nghĩ trong ${
           endTime - startTime
-        }ms, đánh giá: ${bestMove.score}`;
+        }ms, đánh giá: ${move.score}`;
       }
 
       document.getElementById("aiThinking").classList.add("hidden");
@@ -611,21 +632,31 @@ class TicTacToeAI {
   findBestMove() {
     let bestScore = -Infinity;
     let bestMove = null;
-
     const candidateMoves = this.getCandidateMoves();
 
+    // Ưu tiên nước thắng ngay nếu có
+    for (const move of candidateMoves) {
+      const { row, col } = move;
+      this.board[row][col] = this.aiPlayer;
+      const winner = this.checkWinner();
+      this.board[row][col] = "";
+      if (winner === this.aiPlayer) {
+        // Nếu đi nước này thắng ngay, chọn luôn
+        return { row, col, score: 100000 };
+      }
+    }
+
+    // Nếu không có nước thắng ngay, dùng minimax như cũ
     for (const move of candidateMoves) {
       const { row, col } = move;
       this.board[row][col] = this.aiPlayer;
       const score = this.minimax(0, false, -Infinity, Infinity);
       this.board[row][col] = "";
-
       if (score > bestScore) {
         bestScore = score;
         bestMove = { row, col, score };
       }
     }
-
     return bestMove;
   }
 
@@ -955,3 +986,5 @@ class TicTacToeAI {
 document.addEventListener("DOMContentLoaded", () => {
   new TicTacToeAI();
 });
+
+// ----------------

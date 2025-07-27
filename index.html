@@ -12,11 +12,11 @@
     />
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
+  <body class="">
     <!-- Màn hình đăng nhập -->
     <div id="loginScreen" class="auth-screen">
       <div class="auth-container">
-        <h1>Game Caro AI</h1>
+        <h1 class="">Game Caro AI</h1>
         <h2>Đăng nhập</h2>
 
         <form id="loginForm" class="auth-form">
@@ -173,6 +173,16 @@
           <select id="gameMode">
             <option value="ai" selected>Chơi với AI</option>
             <option value="two">2 Người</option>
+          </select>
+        </div>
+
+        <!-- THÊM: Chọn độ khó -->
+        <div class="control-group">
+          <label for="difficulty">Độ khó:</label>
+          <select id="difficulty">
+            <option value="easy">Dễ</option>
+            <option value="medium" selected>Trung bình</option>
+            <option value="hard">Khó</option>
           </select>
         </div>
 
