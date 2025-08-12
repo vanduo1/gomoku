@@ -166,7 +166,7 @@ class TicTacToeAI {
     this.aiPlayer = "O";
     this.maxDepth = 3;
     this.isAITurn = false;
-    this.difficulty = "medium"; // NEW: thêm thuộc tính độ khó
+    this.difficulty = "medium"; // thêm thuộc tính độ khó
     // Mở rộng điểm số để hỗ trợ 2 chế độ
     this.scores = { human: 0, ai: 0, tie: 0, x: 0, o: 0 };
     this.userManager = new UserManager();
