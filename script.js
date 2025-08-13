@@ -238,6 +238,14 @@ class TicTacToeAI {
       this.initializeGame();
     });
 
+    document.getElementById("undoMove").addEventListener("click", () => {
+      this.undoLastMove();
+    });
+
+    document.getElementById("redoMove").addEventListener("click", () => {
+      this.redoMove();
+    });
+
     document.getElementById("boardSize").addEventListener("change", () => {
       this.initializeGame();
     });
@@ -434,6 +442,8 @@ class TicTacToeAI {
       .fill()
       .map(() => Array(this.size).fill(""));
     this.gameOver = false;
+    this.moveHistory = []; // Thêm lịch sử nước đi
+    this.redoHistory = []; // Thêm lịch sử nước đi đã lùi lại
 
     // Cập nhật hiển thị lựa chọn người chơi đầu (ẩn khi chế độ 2 người)
     this.updateFirstPlayerVisibility();
@@ -463,6 +473,8 @@ class TicTacToeAI {
     this.createBoard();
     this.updateStatus();
     this.updateScore();
+    this.updateUndoButton(); // Cập nhật trạng thái nút lùi lại
+    this.updateRedoButton(); // Cập nhật trạng thái nút làm lại
 
     // Nếu AI đi trước, thực hiện nước đi
     if (this.gameMode === "ai" && this.isAITurn) {
@@ -551,6 +563,18 @@ class TicTacToeAI {
   }
 
   makeMove(row, col, player) {
+    // Xóa lịch sử redo khi có nước đi mới
+    this.redoHistory = [];
+
+    // Lưu trạng thái trước khi thực hiện nước đi
+    this.moveHistory.push({
+      row,
+      col,
+      player,
+      previousPlayer: this.currentPlayer,
+      boardState: this.board.map((row) => [...row]), // Deep copy của board
+    });
+
     this.board[row][col] = player;
     this.updateBoard();
 
@@ -563,6 +587,9 @@ class TicTacToeAI {
       this.currentPlayer = this.currentPlayer === "X" ? "O" : "X";
       this.updateStatus();
     }
+
+    this.updateUndoButton(); // Cập nhật trạng thái nút lùi lại
+    this.updateRedoButton(); // Cập nhật trạng thái nút làm lại
   }
 
   makeAIMove() {
@@ -597,6 +624,8 @@ class TicTacToeAI {
 
       document.getElementById("aiThinking").classList.add("hidden");
       this.isAITurn = false;
+      this.updateUndoButton(); // Cập nhật nút lùi lại sau khi AI đi
+      this.updateRedoButton(); // Cập nhật nút làm lại sau khi AI đi
     }, 100);
   }
 
@@ -973,6 +1002,8 @@ class TicTacToeAI {
 
     this.updateScore();
     this.updateUserInfo(); // Update user info after game ends
+    this.updateUndoButton(); // Vô hiệu hóa nút lùi lại
+    this.updateRedoButton(); // Vô hiệu hóa nút làm lại
 
     // Vô hiệu hóa tất cả các ô
     const cells = document.querySelectorAll(".cell");
@@ -993,6 +1024,127 @@ class TicTacToeAI {
     }
 
     document.getElementById("tieScore").textContent = this.scores.tie;
+  }
+
+  // Chức năng lùi lại bước đã đi
+  undoLastMove() {
+    if (this.moveHistory.length === 0 || this.gameOver) {
+      return; // Không có nước đi nào để lùi lại hoặc game đã kết thúc
+    }
+
+    // Trong chế độ AI, cần lùi lại 2 nước đi (người chơi và AI)
+    if (this.gameMode === "ai" && this.moveHistory.length >= 2) {
+      // Lùi lại nước đi của AI
+      const aiMove = this.moveHistory.pop();
+      this.board[aiMove.row][aiMove.col] = "";
+
+      // Lùi lại nước đi của người chơi
+      const humanMove = this.moveHistory.pop();
+      this.board[humanMove.row][humanMove.col] = "";
+
+      // Lưu các nước đi đã lùi vào redoHistory
+      this.redoHistory.push(humanMove, aiMove);
+
+      // Khôi phục trạng thái
+      this.currentPlayer = humanMove.previousPlayer;
+      this.isAITurn = false;
+    } else if (this.gameMode === "two" && this.moveHistory.length >= 1) {
+      // Trong chế độ 2 người, chỉ lùi lại 1 nước đi
+      const lastMove = this.moveHistory.pop();
+      this.board[lastMove.row][lastMove.col] = "";
+
+      // Lưu nước đi đã lùi vào redoHistory
+      this.redoHistory.push(lastMove);
+
+      this.currentPlayer = lastMove.previousPlayer;
+    } else {
+      return; // Không đủ nước đi để lùi lại
+    }
+
+    // Cập nhật giao diện
+    this.updateBoard();
+    this.updateStatus();
+    this.updateUndoButton();
+    this.updateRedoButton(); // Cập nhật trạng thái nút làm lại
+
+    // Xóa highlight thắng nếu có
+    const winningCells = document.querySelectorAll(".winning");
+    winningCells.forEach((cell) => cell.classList.remove("winning"));
+  }
+
+  // Cập nhật trạng thái nút lùi lại
+  updateUndoButton() {
+    const undoButton = document.getElementById("undoMove");
+
+    if (this.gameOver) {
+      undoButton.disabled = true;
+      return;
+    }
+
+    if (this.gameMode === "ai") {
+      // Trong chế độ AI, cần ít nhất 2 nước đi và không phải lượt AI
+      undoButton.disabled = this.moveHistory.length < 2 || this.isAITurn;
+    } else {
+      // Trong chế độ 2 người, cần ít nhất 1 nước đi
+      undoButton.disabled = this.moveHistory.length < 1;
+    }
+  }
+
+  // Chức năng khôi phục lại bước đã lùi
+  redoMove() {
+    if (this.redoHistory.length === 0 || this.gameOver) {
+      return; // Không có nước đi nào để khôi phục hoặc game đã kết thúc
+    }
+
+    // Trong chế độ AI, cần khôi phục 2 nước đi (người chơi và AI)
+    if (this.gameMode === "ai" && this.redoHistory.length >= 2) {
+      // Khôi phục nước đi của người chơi
+      const humanMove = this.redoHistory.shift();
+      this.board[humanMove.row][humanMove.col] = humanMove.player;
+      this.moveHistory.push(humanMove);
+
+      // Khôi phục nước đi của AI
+      const aiMove = this.redoHistory.shift();
+      this.board[aiMove.row][aiMove.col] = aiMove.player;
+      this.moveHistory.push(aiMove);
+
+      // Khôi phục trạng thái
+      this.currentPlayer = aiMove.player === "X" ? "O" : "X";
+      this.isAITurn = false;
+    } else if (this.gameMode === "two" && this.redoHistory.length >= 1) {
+      // Trong chế độ 2 người, chỉ khôi phục 1 nước đi
+      const move = this.redoHistory.shift();
+      this.board[move.row][move.col] = move.player;
+      this.moveHistory.push(move);
+
+      this.currentPlayer = move.player === "X" ? "O" : "X";
+    } else {
+      return; // Không đủ nước đi để khôi phục
+    }
+
+    // Cập nhật giao diện
+    this.updateBoard();
+    this.updateStatus();
+    this.updateUndoButton();
+    this.updateRedoButton();
+  }
+
+  // Cập nhật trạng thái nút làm lại
+  updateRedoButton() {
+    const redoButton = document.getElementById("redoMove");
+
+    if (this.gameOver) {
+      redoButton.disabled = true;
+      return;
+    }
+
+    if (this.gameMode === "ai") {
+      // Trong chế độ AI, cần ít nhất 2 nước đi trong redoHistory và không phải lượt AI
+      redoButton.disabled = this.redoHistory.length < 2 || this.isAITurn;
+    } else {
+      // Trong chế độ 2 người, cần ít nhất 1 nước đi trong redoHistory
+      redoButton.disabled = this.redoHistory.length < 1;
+    }
   }
 }
 
