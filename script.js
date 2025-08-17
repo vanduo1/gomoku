@@ -3,6 +3,7 @@ class UserManager {
   constructor() {
     this.currentUser = null;
     this.users = this.loadUsers();
+    this.recalculateAllLevels(); // Recalculate levels on initialization
   }
 
   loadUsers() {
@@ -25,6 +26,22 @@ class UserManager {
 
   saveUsers() {
     localStorage.setItem("caroUsers", JSON.stringify(this.users));
+  }
+
+  recalculateAllLevels() {
+    let updated = false;
+    this.users.forEach((user) => {
+      const oldLevel = user.stats.level;
+      const newLevel = this.calculateLevel(user.stats);
+      if (oldLevel !== newLevel) {
+        user.stats.level = newLevel;
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      this.saveUsers();
+    }
   }
 
   register(username, password) {
@@ -70,34 +87,70 @@ class UserManager {
     return user;
   }
 
+  getUser(username) {
+    return this.users.find((user) => user.username === username);
+  }
+
   logout() {
     this.currentUser = null;
   }
 
-  updateUserStats(result) {
+  updateUserStats(result, gameMode = "ai", difficulty = "medium") {
     if (!this.currentUser) return;
 
     const stats = this.currentUser.stats;
     stats.totalGames++;
 
-    switch (result) {
-      case "win":
-        stats.wins++;
-        stats.points += 10;
-        break;
-      case "loss":
-        stats.losses++;
-        stats.points += 1;
-        break;
-      case "draw":
-        stats.draws++;
-        stats.points += 3;
-        break;
+    // Tính điểm dựa trên kết quả, chế độ chơi và độ khó
+    let points = 0;
+
+    if (gameMode === "two") {
+      // Chế độ 2 người - điểm chuẩn
+      switch (result) {
+        case "win":
+          stats.wins++;
+          points = 15; // Thắng người thật khó hơn AI
+          break;
+        case "loss":
+          stats.losses++;
+          points = 2; // Thua người thật vẫn được điểm khuyến khích
+          break;
+        case "draw":
+          stats.draws++;
+          points = 5; // Hòa với người thật
+          break;
+      }
+    } else {
+      // Chế độ AI - điểm phụ thuộc độ khó
+      const difficultyMultiplier = {
+        easy: 0.7, // Thắng AI dễ ít điểm hơn
+        medium: 1.0, // Điểm chuẩn
+        hard: 1.5, // Thắng AI khó được nhiều điểm hơn
+      };
+
+      const multiplier = difficultyMultiplier[difficulty] || 1.0;
+
+      switch (result) {
+        case "win":
+          stats.wins++;
+          points = Math.round(10 * multiplier); // 7, 10, hoặc 15 điểm
+          break;
+        case "loss":
+          stats.losses++;
+          points = Math.round(1 * multiplier); // 1, 1, hoặc 2 điểm
+          break;
+        case "draw":
+          stats.draws++;
+          points = Math.round(3 * multiplier); // 2, 3, hoặc 5 điểm
+          break;
+      }
     }
 
-    // Calculate level based on points
-    const newLevel = Math.floor(stats.points / 50) + 1;
+    stats.points += points;
+
+    // Calculate level based on multiple factors
     const oldLevel = stats.level;
+    const newLevel = this.calculateLevel(stats);
     stats.level = newLevel;
 
     this.saveUsers();
@@ -107,7 +160,53 @@ class UserManager {
       this.showLevelUpNotification(newLevel);
     }
 
-    return { levelUp: newLevel > oldLevel, newLevel };
+    return {
+      levelUp: newLevel > oldLevel,
+      newLevel,
+      pointsEarned: points,
+      gameMode,
+      difficulty,
+    };
+  }
+
+  calculateLevel(stats) {
+    // Base level calculation using multiple factors
+    let level = 1;
+
+    // Factor 1: Points (40% weight) - Base progression
+    const pointsLevel = Math.floor(stats.points / 30) + 1;
+
+    // Factor 2: Win rate (35% weight) - Skill indicator
+    const winRate = stats.totalGames > 0 ? stats.wins / stats.totalGames : 0;
+    let winRateBonus = 0;
+    if (stats.totalGames >= 10) {
+      // Only apply after significant games
+      winRateBonus = Math.floor(winRate * 20); // 0-20 bonus levels
+    }
+
+    // Factor 3: Experience (15% weight) - Total games played
+    const experienceBonus = Math.floor(stats.totalGames / 25); // 1 level per 25 games
+
+    // Factor 4: Consistency (10% weight) - Lower loss rate
+    const lossRate = stats.totalGames > 0 ? stats.losses / stats.totalGames : 0;
+    const consistencyBonus =
+      stats.totalGames >= 20 ? Math.floor((1 - lossRate) * 10) : 0;
+
+    // Combine all factors
+    level = Math.floor(
+      pointsLevel * 0.4 +
+        (pointsLevel + winRateBonus) * 0.35 +
+        (pointsLevel + experienceBonus) * 0.15 +
+        (pointsLevel + consistencyBonus) * 0.1
+    );
+
+    // Ensure minimum level is 1
+    level = Math.max(1, level);
+
+    // Cap maximum level at 100 for balance
+    level = Math.min(100, level);
+
+    return level;
   }
 
   showLevelUpNotification(level) {
@@ -116,26 +215,69 @@ class UserManager {
   }
 
   getUserLevel(points) {
-    const level = Math.floor(points / 50) + 1;
-    if (level >= 100) return "Grandmaster";
-    if (level >= 50) return "Master";
-    if (level >= 25) return "Expert";
-    if (level >= 10) return "Advanced";
-    if (level >= 5) return "Amateur";
+    // Use the same calculation method for consistency
+    const dummyStats = {
+      points: points,
+      wins: 0,
+      losses: 0,
+      totalGames: 0,
+    };
+    const level = this.calculateLevel(dummyStats);
+
+    // Return level titles based on calculated level
+    if (level >= 80) return "Grandmaster";
+    if (level >= 60) return "Master";
+    if (level >= 40) return "Expert";
+    if (level >= 25) return "Advanced";
+    if (level >= 15) return "Intermediate";
+    if (level >= 8) return "Amateur";
+    if (level >= 3) return "Novice";
     return "Beginner";
   }
 
-  getLeaderboard(sortBy = "winRate") {
-    const leaderboard = this.users.map((user) => ({
-      ...user,
-      winRate:
-        user.stats.totalGames > 0
-          ? ((user.stats.wins / user.stats.totalGames) * 100).toFixed(1)
-          : 0,
-    }));
+  getLevelBreakdown(stats) {
+    const pointsLevel = Math.floor(stats.points / 30) + 1;
+    const winRate = stats.totalGames > 0 ? stats.wins / stats.totalGames : 0;
+    const winRateBonus = stats.totalGames >= 10 ? Math.floor(winRate * 20) : 0;
+    const experienceBonus = Math.floor(stats.totalGames / 25);
+    const lossRate = stats.totalGames > 0 ? stats.losses / stats.totalGames : 0;
+    const consistencyBonus =
+      stats.totalGames >= 20 ? Math.floor((1 - lossRate) * 10) : 0;
+
+    return {
+      baseLevel: pointsLevel,
+      winRateBonus: winRateBonus,
+      experienceBonus: experienceBonus,
+      consistencyBonus: consistencyBonus,
+      finalLevel: this.calculateLevel(stats),
+      winRate: (winRate * 100).toFixed(1),
+      totalGames: stats.totalGames,
+    };
+  }
+
+  getLeaderboard(sortBy = "level") {
+    const leaderboard = this.users.map((user) => {
+      const level = this.calculateLevel(user.stats);
+      const levelText = this.getUserLevel(user.stats.points);
+      return {
+        ...user,
+        winRate:
+          user.stats.totalGames > 0
+            ? ((user.stats.wins / user.stats.totalGames) * 100).toFixed(1)
+            : 0,
+        level: level,
+        levelText: levelText,
+      };
+    });
 
     return leaderboard.sort((a, b) => {
       switch (sortBy) {
+        case "level":
+          // Sắp xếp theo cấp độ tính toán được, nếu bằng nhau thì theo điểm
+          if (b.level !== a.level) {
+            return b.level - a.level;
+          }
+          return b.stats.points - a.stats.points;
         case "winRate":
           if (a.stats.totalGames === 0 && b.stats.totalGames === 0) return 0;
           if (a.stats.totalGames === 0) return 1;
@@ -233,6 +375,22 @@ class TicTacToeAI {
       document.getElementById("levelUpNotification").classList.add("hidden");
     });
 
+    // Level detail modal
+    document
+      .getElementById("closeLevelDetail")
+      .addEventListener("click", () => {
+        this.closeLevelDetailModal();
+      });
+
+    // Close modal when clicking outside
+    document
+      .getElementById("levelDetailModal")
+      .addEventListener("click", (e) => {
+        if (e.target.id === "levelDetailModal") {
+          this.closeLevelDetailModal();
+        }
+      });
+
     // Game event listeners
     document.getElementById("newGame").addEventListener("click", () => {
       this.initializeGame();
@@ -256,6 +414,7 @@ class TicTacToeAI {
       gameModeSel.addEventListener("change", () => {
         this.gameMode = gameModeSel.value; // Cập nhật chế độ chơi hiện tại
         this.updateFirstPlayerVisibility(); // Ẩn/hiện tuỳ chọn người chơi đầu
+        this.updatePointsInfoVisibility(); // Cập nhật thông tin điểm
         this.initializeGame();
       });
     }
@@ -301,6 +460,15 @@ class TicTacToeAI {
     }
   }
 
+  // Cập nhật hiển thị thông tin điểm dựa trên chế độ chơi và độ khó
+  updatePointsInfoVisibility() {
+    const pointsInfo = document.getElementById("pointsInfo");
+    if (!pointsInfo) return;
+
+    // Luôn hiển thị thông tin điểm để người chơi biết cách tính
+    pointsInfo.style.display = "block";
+  }
+
   // Screen Management
   hideAllScreens() {
     document.getElementById("loginScreen").classList.add("hidden");
@@ -330,6 +498,7 @@ class TicTacToeAI {
     this.hideAllScreens();
     document.getElementById("gameScreen").classList.remove("hidden");
     this.updateUserInfo();
+    this.updatePointsInfoVisibility(); // Cập nhật thông tin điểm
     this.initializeGame();
   }
 
@@ -390,9 +559,21 @@ class TicTacToeAI {
     const user = this.userManager.currentUser;
     if (!user) return;
 
+    const levelTitle = this.userManager.getUserLevel(user.stats.points);
+    const actualLevel = this.userManager.calculateLevel(user.stats);
+    const levelBreakdown = this.userManager.getLevelBreakdown(user.stats);
+
     document.getElementById("currentUser").textContent = user.username;
-    document.getElementById("userLevel").textContent = user.stats.level;
+    document.getElementById(
+      "userLevel"
+    ).textContent = `${actualLevel} (${levelTitle})`;
     document.getElementById("userPoints").textContent = user.stats.points;
+
+    // Add level breakdown tooltip or additional info if element exists
+    const levelElement = document.getElementById("userLevel");
+    if (levelElement) {
+      levelElement.title = `Tỷ lệ thắng: ${levelBreakdown.winRate}% | Kinh nghiệm: ${levelBreakdown.totalGames} trận | Cấp độ cơ bản: ${levelBreakdown.baseLevel}`;
+    }
   }
 
   updateLeaderboard() {
@@ -411,23 +592,28 @@ class TicTacToeAI {
       else if (rank === 2) row.classList.add("rank-2");
       else if (rank === 3) row.classList.add("rank-3");
 
-      const levelText = this.userManager.getUserLevel(user.stats.points);
+      const levelText = user.levelText;
       const levelClass = levelText.toLowerCase().replace(" ", "-");
+
+      // Tạo chuỗi Thắng-Thua-Hòa ngắn gọn
+      const wldRecord = `${user.stats.wins}-${user.stats.losses}-${user.stats.draws}`;
 
       row.innerHTML = `
         <td>${rank}</td>
-        <td>${user.username}</td>
-        <td>${user.stats.wins}</td>
-        <td>${user.stats.losses}</td>
-        <td>${user.stats.draws}</td>
-        <td>${user.stats.totalGames}</td>
-        <td>${user.winRate}%</td>
-        <td>${user.stats.points}</td>
-        <td><span class="level-badge level-${levelClass}">${levelText}</span></td>
+        <td class="player-name">${user.username}</td>
+        <td class="level-cell">
+          <span class="level-badge level-${levelClass}">${levelText}</span>
+          <small class="level-number">Lv.${user.level}</small>
+        </td>
+        <td class="points">${user.stats.points}</td>
+        <td class="record">${wldRecord}</td>
+        <td class="winrate">${user.winRate}%</td>
       `;
 
       tbody.appendChild(row);
     });
+
+    // Remove detail button event listeners since they're no longer needed
   }
 
   // Game Logic Methods (keeping existing methods and adding integration)
@@ -971,33 +1157,63 @@ class TicTacToeAI {
   endGame(winner) {
     this.gameOver = true;
     const status = document.getElementById("status");
+    let statsResult;
 
     if (winner === "tie") {
       status.textContent = "Hòa!";
       this.scores.tie++;
-      this.userManager.updateUserStats("draw");
+      statsResult = this.userManager.updateUserStats(
+        "draw",
+        this.gameMode,
+        this.difficulty
+      );
     } else if (this.gameMode === "ai") {
       // AI mode
       if (winner === this.humanPlayer) {
         status.textContent = "Bạn thắng!";
         this.scores.human++;
-        this.userManager.updateUserStats("win");
+        statsResult = this.userManager.updateUserStats(
+          "win",
+          this.gameMode,
+          this.difficulty
+        );
       } else {
         status.textContent = "AI thắng!";
         this.scores.ai++;
-        this.userManager.updateUserStats("loss");
+        statsResult = this.userManager.updateUserStats(
+          "loss",
+          this.gameMode,
+          this.difficulty
+        );
       }
     } else {
       // Two player mode
       if (winner === "X") {
         status.textContent = "X thắng!";
         this.scores.x++;
-        this.userManager.updateUserStats("win");
+        statsResult = this.userManager.updateUserStats(
+          "win",
+          this.gameMode,
+          this.difficulty
+        );
       } else {
         status.textContent = "O thắng!";
         this.scores.o++;
-        this.userManager.updateUserStats("loss");
+        statsResult = this.userManager.updateUserStats(
+          "loss",
+          this.gameMode,
+          this.difficulty
+        );
       }
+    }
+
+    // Hiển thị thông tin điểm đã nhận
+    if (statsResult && statsResult.pointsEarned > 0) {
+      const difficultyText =
+        statsResult.gameMode === "ai"
+          ? ` (độ khó: ${statsResult.difficulty})`
+          : " (vs người chơi)";
+      status.textContent += ` +${statsResult.pointsEarned} điểm${difficultyText}`;
     }
 
     this.updateScore();
@@ -1146,11 +1362,58 @@ class TicTacToeAI {
       redoButton.disabled = this.redoHistory.length < 1;
     }
   }
+
+  // Level Detail Modal Methods
+  showLevelDetail(username) {
+    const modal = document.getElementById("levelDetailModal");
+    if (!modal) return;
+
+    const user = this.userManager.getUser(username);
+    if (!user) return;
+
+    const levelBreakdown = this.userManager.getLevelBreakdown(user.stats);
+    const levelText = this.userManager.getUserLevel(user.stats.points);
+    const currentLevel = this.userManager.calculateLevel(user.stats);
+
+    // Populate modal with user data
+    document.getElementById("modalPlayerName").textContent = username;
+    document.getElementById("modalCurrentLevel").textContent = currentLevel;
+    document.getElementById("modalLevelTitle").textContent = levelText;
+
+    document.getElementById("modalBaseLevel").textContent =
+      levelBreakdown.baseLevel;
+    document.getElementById(
+      "modalWinRateBonus"
+    ).textContent = `+${levelBreakdown.winRateBonus}`;
+    document.getElementById("modalWinRate").textContent =
+      levelBreakdown.winRate;
+    document.getElementById(
+      "modalExpBonus"
+    ).textContent = `+${levelBreakdown.experienceBonus}`;
+    document.getElementById(
+      "modalConsistencyBonus"
+    ).textContent = `+${levelBreakdown.consistencyBonus}`;
+
+    document.getElementById("modalTotalGames").textContent =
+      levelBreakdown.totalGames;
+    document.getElementById("modalWinRatePercent").textContent =
+      levelBreakdown.winRate;
+    document.getElementById("modalPoints").textContent = user.stats.points;
+
+    // Show modal
+    modal.classList.remove("hidden");
+  }
+
+  closeLevelDetailModal() {
+    document.getElementById("levelDetailModal").classList.add("hidden");
+  }
 }
 
 // Khởi tạo game khi trang được load
+let gameInstance = null;
 document.addEventListener("DOMContentLoaded", () => {
-  new TicTacToeAI();
+  gameInstance = new TicTacToeAI();
+  window.game = gameInstance; // Make it globally accessible
 });
 
 // ----------------
