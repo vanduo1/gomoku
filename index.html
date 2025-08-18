@@ -98,6 +98,7 @@
               <option value="points">Điểm số</option>
               <option value="winRate">Tỷ lệ thắng</option>
               <option value="totalGames">Tổng số trận</option>
+              <option value="totalWins">Số trận thắng</option>
             </select>
           </div>
           <button id="refreshLeaderboard">Làm mới</button>
@@ -110,9 +111,11 @@
                 <th>Hạng</th>
                 <th>Người chơi</th>
                 <th>Cấp độ</th>
+                <th>Chi tiết Điểm</th>
                 <th>Điểm</th>
                 <th>T-T-H</th>
                 <th>Tỷ lệ thắng</th>
+                <th>Kinh nghiệm</th>
               </tr>
             </thead>
             <tbody id="leaderboardBody"></tbody>
@@ -120,12 +123,25 @@
         </div>
 
         <div class="leaderboard-footer">
-          <button id="backToLogin" class="secondary-btn">
-            Quay lại đăng nhập
-          </button>
-          <button id="backToGame" class="secondary-btn hidden">
-            Quay lại game
-          </button>
+          <div class="level-info">
+            <h3>Hệ thống Điểm số:</h3>
+            <p>
+              <strong>AI Dễ:</strong> Thắng: 7đ, Hòa: 2đ, Thua: 1đ |
+              <strong>AI Trung bình:</strong> Thắng: 10đ, Hòa: 3đ, Thua: 1đ
+            </p>
+            <p>
+              <strong>AI Khó:</strong> Thắng: 15đ, Hòa: 5đ, Thua: 2đ |
+              <strong>Với Người:</strong> Thắng: 15đ, Hòa: 5đ, Thua: 2đ
+            </p>
+          </div>
+          <div class="footer-buttons">
+            <button id="backToLogin" class="secondary-btn">
+              Quay lại đăng nhập
+            </button>
+            <button id="backToGame" class="secondary-btn hidden">
+              Quay lại game
+            </button>
+          </div>
         </div>
       </div>
     </div>

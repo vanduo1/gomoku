@@ -19,6 +19,13 @@ class UserManager {
         totalGames: user.stats?.totalGames || 0,
         points: user.stats?.points || 0,
         level: user.stats?.level || 1,
+        // Chi tiết điểm theo nguồn
+        pointsBreakdown: user.stats?.pointsBreakdown || {
+          aiEasy: { wins: 0, losses: 0, draws: 0, points: 0 },
+          aiMedium: { wins: 0, losses: 0, draws: 0, points: 0 },
+          aiHard: { wins: 0, losses: 0, draws: 0, points: 0 },
+          human: { wins: 0, losses: 0, draws: 0, points: 0 },
+        },
         ...user.stats,
       },
     }));
@@ -32,6 +39,18 @@ class UserManager {
     let updated = false;
     this.users.forEach((user) => {
       const oldLevel = user.stats.level;
+
+      // Đảm bảo pointsBreakdown tồn tại (migration cho dữ liệu cũ)
+      if (!user.stats.pointsBreakdown) {
+        user.stats.pointsBreakdown = {
+          aiEasy: { wins: 0, losses: 0, draws: 0, points: 0 },
+          aiMedium: { wins: 0, losses: 0, draws: 0, points: 0 },
+          aiHard: { wins: 0, losses: 0, draws: 0, points: 0 },
+          human: { wins: 0, losses: 0, draws: 0, points: 0 },
+        };
+        updated = true;
+      }
+
       const newLevel = this.calculateLevel(user.stats);
       if (oldLevel !== newLevel) {
         user.stats.level = newLevel;
@@ -68,6 +87,12 @@ class UserManager {
         totalGames: 0,
         points: 0,
         level: 1,
+        pointsBreakdown: {
+          aiEasy: { wins: 0, losses: 0, draws: 0, points: 0 },
+          aiMedium: { wins: 0, losses: 0, draws: 0, points: 0 },
+          aiHard: { wins: 0, losses: 0, draws: 0, points: 0 },
+          human: { wins: 0, losses: 0, draws: 0, points: 0 },
+        },
       },
     };
 
@@ -101,22 +126,37 @@ class UserManager {
     const stats = this.currentUser.stats;
     stats.totalGames++;
 
+    // Đảm bảo pointsBreakdown tồn tại
+    if (!stats.pointsBreakdown) {
+      stats.pointsBreakdown = {
+        aiEasy: { wins: 0, losses: 0, draws: 0, points: 0 },
+        aiMedium: { wins: 0, losses: 0, draws: 0, points: 0 },
+        aiHard: { wins: 0, losses: 0, draws: 0, points: 0 },
+        human: { wins: 0, losses: 0, draws: 0, points: 0 },
+      };
+    }
+
     // Tính điểm dựa trên kết quả, chế độ chơi và độ khó
     let points = 0;
+    let breakdownKey = "";
 
     if (gameMode === "two") {
       // Chế độ 2 người - điểm chuẩn
+      breakdownKey = "human";
       switch (result) {
         case "win":
           stats.wins++;
+          stats.pointsBreakdown.human.wins++;
           points = 15; // Thắng người thật khó hơn AI
           break;
         case "loss":
           stats.losses++;
+          stats.pointsBreakdown.human.losses++;
           points = 2; // Thua người thật vẫn được điểm khuyến khích
           break;
         case "draw":
           stats.draws++;
+          stats.pointsBreakdown.human.draws++;
           points = 5; // Hòa với người thật
           break;
       }
@@ -129,24 +169,31 @@ class UserManager {
       };
 
       const multiplier = difficultyMultiplier[difficulty] || 1.0;
+      breakdownKey = `ai${
+        difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
+      }`;
 
       switch (result) {
         case "win":
           stats.wins++;
+          stats.pointsBreakdown[breakdownKey].wins++;
           points = Math.round(10 * multiplier); // 7, 10, hoặc 15 điểm
           break;
         case "loss":
           stats.losses++;
+          stats.pointsBreakdown[breakdownKey].losses++;
           points = Math.round(1 * multiplier); // 1, 1, hoặc 2 điểm
           break;
         case "draw":
           stats.draws++;
+          stats.pointsBreakdown[breakdownKey].draws++;
           points = Math.round(3 * multiplier); // 2, 3, hoặc 5 điểm
           break;
       }
     }
 
     stats.points += points;
+    stats.pointsBreakdown[breakdownKey].points += points;
 
     // Calculate level based on multiple factors
     const oldLevel = stats.level;
@@ -253,6 +300,18 @@ class UserManager {
       winRate: (winRate * 100).toFixed(1),
       totalGames: stats.totalGames,
     };
+  }
+
+  getPointsBreakdown(stats) {
+    if (!stats.pointsBreakdown) {
+      return {
+        aiEasy: { wins: 0, losses: 0, draws: 0, points: 0 },
+        aiMedium: { wins: 0, losses: 0, draws: 0, points: 0 },
+        aiHard: { wins: 0, losses: 0, draws: 0, points: 0 },
+        human: { wins: 0, losses: 0, draws: 0, points: 0 },
+      };
+    }
+    return stats.pointsBreakdown;
   }
 
   getLeaderboard(sortBy = "level") {
@@ -374,22 +433,6 @@ class TicTacToeAI {
     document.getElementById("closeLevelUp").addEventListener("click", () => {
       document.getElementById("levelUpNotification").classList.add("hidden");
     });
-
-    // Level detail modal
-    document
-      .getElementById("closeLevelDetail")
-      .addEventListener("click", () => {
-        this.closeLevelDetailModal();
-      });
-
-    // Close modal when clicking outside
-    document
-      .getElementById("levelDetailModal")
-      .addEventListener("click", (e) => {
-        if (e.target.id === "levelDetailModal") {
-          this.closeLevelDetailModal();
-        }
-      });
 
     // Game event listeners
     document.getElementById("newGame").addEventListener("click", () => {
@@ -595,8 +638,18 @@ class TicTacToeAI {
       const levelText = user.levelText;
       const levelClass = levelText.toLowerCase().replace(" ", "-");
 
+      // Lấy thông tin chi tiết về điểm breakdown
+      const pointsBreakdown = this.userManager.getPointsBreakdown(user.stats);
+
       // Tạo chuỗi Thắng-Thua-Hòa ngắn gọn
       const wldRecord = `${user.stats.wins}-${user.stats.losses}-${user.stats.draws}`;
+
+      // Tạo thông tin chi tiết điểm đơn giản
+      const pointsDetails = `AI Dễ: ${pointsBreakdown.aiEasy.points}đ | AI TB: ${pointsBreakdown.aiMedium.points}đ | AI Khó: ${pointsBreakdown.aiHard.points}đ | Người: ${pointsBreakdown.human.points}đ`;
+
+      // Hiển thị kinh nghiệm dựa trên tổng số trận
+      const experienceLevel = Math.floor(user.stats.totalGames / 5); // Mỗi 5 trận = 1 cấp kinh nghiệm
+      const experienceText = `${experienceLevel} (${user.stats.totalGames} trận)`;
 
       row.innerHTML = `
         <td>${rank}</td>
@@ -605,9 +658,11 @@ class TicTacToeAI {
           <span class="level-badge level-${levelClass}">${levelText}</span>
           <small class="level-number">Lv.${user.level}</small>
         </td>
+        <td class="points-details">${pointsDetails}</td>
         <td class="points">${user.stats.points}</td>
         <td class="record">${wldRecord}</td>
         <td class="winrate">${user.winRate}%</td>
+        <td class="experience">${experienceText}</td>
       `;
 
       tbody.appendChild(row);
@@ -622,7 +677,11 @@ class TicTacToeAI {
     this.gameMode = document.getElementById("gameMode")
       ? document.getElementById("gameMode").value
       : "ai";
-    // this.maxDepth = parseInt(document.getElementById("difficulty").value);
+
+    // Lấy difficulty một cách an toàn
+    const difficultyElement = document.getElementById("difficulty");
+    this.difficulty = difficultyElement ? difficultyElement.value : "medium";
+
     this.maxDepth = this.getOptimalDepth(this.size);
     this.board = Array(this.size)
       .fill()
@@ -1361,51 +1420,6 @@ class TicTacToeAI {
       // Trong chế độ 2 người, cần ít nhất 1 nước đi trong redoHistory
       redoButton.disabled = this.redoHistory.length < 1;
     }
-  }
-
-  // Level Detail Modal Methods
-  showLevelDetail(username) {
-    const modal = document.getElementById("levelDetailModal");
-    if (!modal) return;
-
-    const user = this.userManager.getUser(username);
-    if (!user) return;
-
-    const levelBreakdown = this.userManager.getLevelBreakdown(user.stats);
-    const levelText = this.userManager.getUserLevel(user.stats.points);
-    const currentLevel = this.userManager.calculateLevel(user.stats);
-
-    // Populate modal with user data
-    document.getElementById("modalPlayerName").textContent = username;
-    document.getElementById("modalCurrentLevel").textContent = currentLevel;
-    document.getElementById("modalLevelTitle").textContent = levelText;
-
-    document.getElementById("modalBaseLevel").textContent =
-      levelBreakdown.baseLevel;
-    document.getElementById(
-      "modalWinRateBonus"
-    ).textContent = `+${levelBreakdown.winRateBonus}`;
-    document.getElementById("modalWinRate").textContent =
-      levelBreakdown.winRate;
-    document.getElementById(
-      "modalExpBonus"
-    ).textContent = `+${levelBreakdown.experienceBonus}`;
-    document.getElementById(
-      "modalConsistencyBonus"
-    ).textContent = `+${levelBreakdown.consistencyBonus}`;
-
-    document.getElementById("modalTotalGames").textContent =
-      levelBreakdown.totalGames;
-    document.getElementById("modalWinRatePercent").textContent =
-      levelBreakdown.winRate;
-    document.getElementById("modalPoints").textContent = user.stats.points;
-
-    // Show modal
-    modal.classList.remove("hidden");
-  }
-
-  closeLevelDetailModal() {
-    document.getElementById("levelDetailModal").classList.add("hidden");
   }
 }
 

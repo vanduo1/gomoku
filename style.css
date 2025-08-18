@@ -278,6 +278,13 @@ body {
   min-width: 100px;
 }
 
+.points-details {
+  min-width: 140px;
+  padding: 4px !important;
+  font-size: 11px;
+  text-align: left !important;
+}
+
 .level-number {
   display: block;
   font-size: 12px;
@@ -299,6 +306,24 @@ body {
 .winrate {
   font-weight: 500;
   color: #dc143c;
+}
+
+.points-details {
+  font-size: 11px;
+  min-width: 80px;
+  text-align: center;
+}
+
+.points-breakdown {
+  color: #228b22;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.experience {
+  font-size: 12px;
+  color: #8b4513;
+  font-weight: 500;
 }
 
 #leaderboardTable tbody tr:hover {
@@ -339,7 +364,63 @@ body {
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
 }
 
+/* Level-specific colors */
+.level-beginner {
+  background: #8fbc8f;
+}
+.level-novice {
+  background: #9370db;
+}
+.level-amateur {
+  background: #4169e1;
+}
+.level-intermediate {
+  background: #1e90ff;
+}
+.level-advanced {
+  background: #ff8c00;
+}
+.level-expert {
+  background: #ff6347;
+}
+.level-master {
+  background: #dc143c;
+}
+.level-grandmaster {
+  background: #8b0000;
+}
+
 .leaderboard-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.level-info {
+  background: rgba(70, 130, 180, 0.1);
+  border: 1px solid #4682b4;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  max-width: 600px;
+}
+
+.level-info h3 {
+  margin: 0 0 8px 0;
+  color: #4682b4;
+  font-size: 14px;
+}
+
+.level-info p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.3;
+}
+
+.footer-buttons {
   display: flex;
   justify-content: center;
   gap: 16px;
@@ -794,7 +875,29 @@ button:active {
   #leaderboardTable th,
   #leaderboardTable td {
     padding: 2px 4px;
-    font-size: 20px;
+    font-size: 11px;
+  }
+
+  .points-details {
+    min-width: 120px;
+    font-size: 10px;
+  }
+
+  .experience {
+    display: none;
+  }
+
+  .level-info {
+    padding: 8px;
+    font-size: 10px;
+  }
+
+  .level-info h3 {
+    font-size: 12px;
+  }
+
+  .level-info p {
+    font-size: 10px;
   }
 
   .user-info {
@@ -871,6 +974,16 @@ button:active {
   #leaderboardTable td {
     padding: 2px 2px;
     font-size: 8px;
+  }
+
+  .points-details,
+  .experience,
+  .record {
+    display: none;
+  }
+
+  .level-info {
+    display: none;
   }
 }
 
