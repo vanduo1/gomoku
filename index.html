@@ -111,11 +111,10 @@
                 <th>Hạng</th>
                 <th>Người chơi</th>
                 <th>Cấp độ</th>
-                <th>Chi tiết Điểm</th>
                 <th>Điểm</th>
                 <th>T-T-H</th>
                 <th>Tỷ lệ thắng</th>
-                <th>Kinh nghiệm</th>
+                <th>Tổng trận</th>
               </tr>
             </thead>
             <tbody id="leaderboardBody"></tbody>
@@ -126,12 +125,29 @@
           <div class="level-info">
             <h3>Hệ thống Điểm số:</h3>
             <p>
-              <strong>AI Dễ:</strong> Thắng: 7đ, Hòa: 2đ, Thua: 1đ |
+              <strong>AI Dễ:</strong> Thắng: 3đ, Hòa: 1đ, Thua: 0đ |
               <strong>AI Trung bình:</strong> Thắng: 10đ, Hòa: 3đ, Thua: 1đ
             </p>
             <p>
               <strong>AI Khó:</strong> Thắng: 15đ, Hòa: 5đ, Thua: 2đ |
               <strong>Với Người:</strong> Thắng: 15đ, Hòa: 5đ, Thua: 2đ
+            </p>
+
+            <h3>Cách tính Level & Tỷ lệ thắng:</h3>
+            <p>
+              <strong>Level cơ bản:</strong> Điểm ÷ 100 + 1 |
+              <strong>Bonus level:</strong> AI Hard ≥50% (+2), AI Medium ≥70%
+              (+1), vs Human ≥60% (+2) | <strong>Bonus kinh nghiệm:</strong> Mỗi
+              50 trận (+1)
+            </p>
+            <p>
+              <strong>Tỷ lệ thắng:</strong> Chỉ tính
+              <em>Thắng / (Thắng + Thua)</em>, không tính trận hòa.
+            </p>
+            <p>
+              <strong>Chi tiết tỷ lệ thắng theo đối thủ:</strong>
+              🟢 <em>AI Dễ</em> | 🟡 <em>AI Trung bình</em> | 🔴
+              <em>AI Khó</em> | 👥 <em>Người chơi</em>
             </p>
           </div>
           <div class="footer-buttons">

@@ -275,21 +275,29 @@ body {
 }
 
 .level-cell {
-  min-width: 100px;
+  min-width: 120px;
+  text-align: center;
 }
 
-.points-details {
-  min-width: 140px;
-  padding: 4px !important;
-  font-size: 11px;
-  text-align: left !important;
+.level-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid #8b4513;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: #32cd32;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+  margin-bottom: 2px;
 }
 
-.level-number {
+.level-title {
   display: block;
-  font-size: 12px;
+  font-size: 10px;
   color: #666;
   margin-top: 2px;
+  font-style: italic;
 }
 
 .points {
@@ -306,6 +314,18 @@ body {
 .winrate {
   font-weight: 500;
   color: #dc143c;
+  text-align: center;
+}
+
+.winrate div {
+  margin-bottom: 2px;
+}
+
+.winrate small {
+  font-size: 10px;
+  color: #666;
+  line-height: 1.2;
+  display: block;
 }
 
 .points-details {
@@ -324,6 +344,22 @@ body {
   font-size: 12px;
   color: #8b4513;
   font-weight: 500;
+}
+
+.level-breakdown {
+  font-size: 10px;
+  color: #666;
+  margin-top: 2px;
+  line-height: 1.2;
+  font-style: italic;
+}
+
+.level-cell:hover .level-breakdown {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 #leaderboardTable tbody tr:hover {
@@ -357,11 +393,12 @@ body {
   padding: 4px 8px;
   border: 1px solid #8b4513;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
   background: #32cd32;
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+  margin-bottom: 2px;
 }
 
 /* Level-specific colors */
@@ -404,7 +441,7 @@ body {
   border-radius: 8px;
   padding: 12px;
   text-align: center;
-  max-width: 600px;
+  max-width: 800px;
 }
 
 .level-info h3 {
@@ -418,6 +455,16 @@ body {
   font-size: 12px;
   color: #666;
   line-height: 1.3;
+}
+
+.level-formula {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid #ffd700;
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 8px;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
 }
 
 .footer-buttons {
