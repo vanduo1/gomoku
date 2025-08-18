@@ -249,7 +249,7 @@ body {
   padding: 12px 8px;
   text-align: center;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 20px;
   border: 1px solid #8b4513;
   letter-spacing: 1px;
 }
@@ -258,7 +258,7 @@ body {
   padding: 8px;
   text-align: center;
   border: 1px solid #8b4513;
-  font-size: 16px;
+  font-size: 20px;
   color: #8b0000;
   background: #ffe4b5;
   vertical-align: middle;
@@ -725,17 +725,17 @@ button:active {
 }
 
 .undo-btn {
-  background: #32cd32;
-  border-color: #228b22;
-  box-shadow: 2px 2px 0 #228b22;
+  background: #518fb3;
+  border-color: #316f9c;
+  box-shadow: 2px 2px 0 #0b3f4e;
 }
 
 .undo-btn:hover {
-  background: #40e040;
+  background: #1f7aa4;
 }
 
 .undo-btn:active {
-  box-shadow: 1px 1px 0 #228b22;
+  box-shadow: 1px 1px 0 #22518b;
 }
 
 .undo-btn:disabled {
@@ -986,7 +986,7 @@ button:active {
   #leaderboardTable th,
   #leaderboardTable td {
     padding: 2px 4px;
-    font-size: 11px;
+    font-size: 23px;
   }
 
   .points-details {
@@ -1244,10 +1244,9 @@ button:active {
 }
 
 .rating-number {
-  font-size: 18px;
-  font-weight: bold;
-  color: #ffd700;
-  text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+  font-size: 23px;
+
+  color: #8b0000;
 }
 
 .rank-cell {

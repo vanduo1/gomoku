@@ -131,7 +131,7 @@ class UserManager {
     };
 
     if (gameMode === "two") {
-      rating *= 2; // Chơi với người: x2
+      rating *= 0.5; // Chơi với người: x0.5 (giống AI dễ)
     } else {
       const multiplier = difficultyMultiplier[difficulty] || 1.0;
       rating = Math.round(rating * multiplier);
