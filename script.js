@@ -844,10 +844,8 @@ class TicTacToeAI {
       const startTime = Date.now();
       let move;
       if (this.difficulty === "easy") {
-        // EASY: AI chọn nước đi ngẫu nhiên
-        const candidates = this.getCandidateMoves();
-        move = candidates[Math.floor(Math.random() * candidates.length)];
-        move.score = 0;
+        // EASY: AI có logic cơ bản
+        move = this.findEasyMove();
       } else {
         // MEDIUM & HARD: AI dùng minimax
         move = this.findBestMove();
@@ -912,6 +910,126 @@ class TicTacToeAI {
     }
 
     return moves;
+  }
+
+  // Logic đơn giản cho AI dễ - có một chút chiến thuật cơ bản
+  findEasyMove() {
+    const candidateMoves = this.getCandidateMoves();
+
+    // 1. Ưu tiên thắng ngay nếu có (30% cơ hội bỏ qua để tạo sai lầm)
+    if (Math.random() > 0.3) {
+      for (const move of candidateMoves) {
+        const { row, col } = move;
+        this.board[row][col] = this.aiPlayer;
+        const winner = this.checkWinner();
+        this.board[row][col] = "";
+        if (winner === this.aiPlayer) {
+          return { row, col, score: 100 };
+        }
+      }
+    }
+
+    // 2. Chặn người chơi thắng (50% cơ hội bỏ qua để tạo sai lầm)
+    if (Math.random() > 0.5) {
+      for (const move of candidateMoves) {
+        const { row, col } = move;
+        this.board[row][col] = this.humanPlayer;
+        const winner = this.checkWinner();
+        this.board[row][col] = "";
+        if (winner === this.humanPlayer) {
+          return { row, col, score: 50 };
+        }
+      }
+    }
+
+    // 3. Ưu tiên vị trí trung tâm (60% cơ hội)
+    if (Math.random() > 0.4) {
+      const center = Math.floor(this.size / 2);
+      if (this.board[center] && this.board[center][center] === "") {
+        const centerMove = candidateMoves.find(
+          (m) => m.row === center && m.col === center
+        );
+        if (centerMove) {
+          return { row: center, col: center, score: 10 };
+        }
+      }
+    }
+
+    // 4. Tìm vị trí tạo được nhiều quân liên tiếp nhất (40% cơ hội)
+    if (Math.random() > 0.6) {
+      let bestMove = null;
+      let bestCount = 0;
+
+      for (const move of candidateMoves) {
+        const { row, col } = move;
+        this.board[row][col] = this.aiPlayer;
+        const count = this.countConsecutive(row, col, this.aiPlayer);
+        this.board[row][col] = "";
+
+        if (count > bestCount) {
+          bestCount = count;
+          bestMove = { row, col, score: count };
+        }
+      }
+
+      if (bestMove && bestCount > 1) {
+        return bestMove;
+      }
+    }
+
+    // 5. Nếu không có chiến thuật nào được áp dụng, chọn ngẫu nhiên
+    const randomMove =
+      candidateMoves[Math.floor(Math.random() * candidateMoves.length)];
+    return { row: randomMove.row, col: randomMove.col, score: 0 };
+  }
+
+  // Hàm đếm số quân liên tiếp từ một vị trí
+  countConsecutive(row, col, player) {
+    let maxCount = 1;
+    const directions = [
+      [0, 1],
+      [1, 0],
+      [1, 1],
+      [1, -1], // ngang, dọc, chéo chính, chéo phụ
+    ];
+
+    for (const [dx, dy] of directions) {
+      let count = 1;
+
+      // Đếm về một phía
+      let r = row + dx,
+        c = col + dy;
+      while (
+        r >= 0 &&
+        r < this.size &&
+        c >= 0 &&
+        c < this.size &&
+        this.board[r][c] === player
+      ) {
+        count++;
+        r += dx;
+        c += dy;
+      }
+
+      // Đếm về phía ngược lại
+      r = row - dx;
+      c = col - dy;
+      while (
+        r >= 0 &&
+        r < this.size &&
+        c >= 0 &&
+        c < this.size &&
+        this.board[r][c] === player
+      ) {
+        count++;
+        r -= dx;
+        c -= dy;
+      }
+
+      maxCount = Math.max(maxCount, count);
+    }
+
+    return maxCount;
   }
 
   findBestMove() {
