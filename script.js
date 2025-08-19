@@ -593,8 +593,10 @@ class TicTacToeAI {
           return;
         }
 
-        this.gameMode = newGameMode; // Cập nhật chế độ chơi hiện tại
+        this.gameMode = newGameMode; // Cập nhật chế độ chọi hiện tại
         this.updateFirstPlayerVisibility(); // Ẩn/hiện tuỳ chọn người chơi đầu
+        this.updateDifficultyVisibility(); // Ẩn/hiện tuỳ chọn độ khó
+        this.updateAIInfoVisibility(); // Ẩn/hiện thông tin AI
         this.updatePointsInfoVisibility(); // Cập nhật thông tin điểm
         this.updatePlayerInfoDisplay(); // Cập nhật hiển thị thông tin người chơi
         this.initializeGame();
@@ -613,20 +615,8 @@ class TicTacToeAI {
         this.initializeGame();
       });
       this.difficulty = difficultySel.value; // Khởi tạo giá trị độ khó
-      // Ẩn/hiện độ khó theo chế độ chơi
-      const difficultyGroup = difficultySel.parentElement;
-      const updateDifficultyVisibility = () => {
-        if (this.gameMode === "two") {
-          difficultyGroup.classList.add("hidden");
-        } else {
-          difficultyGroup.classList.remove("hidden");
-        }
-      };
-      const gameModeSel = document.getElementById("gameMode");
-      if (gameModeSel) {
-        gameModeSel.addEventListener("change", updateDifficultyVisibility);
-        updateDifficultyVisibility();
-      }
+      // Khởi tạo hiển thị độ khó
+      this.updateDifficultyVisibility();
     }
 
     // NEW: Event listeners cho đăng nhập 2 người
@@ -688,6 +678,17 @@ class TicTacToeAI {
     }
   }
 
+  updateDifficultyVisibility() {
+    const difficultyGroup =
+      document.getElementById("difficulty")?.parentElement;
+    if (!difficultyGroup) return;
+    if (this.gameMode === "two") {
+      difficultyGroup.classList.add("hidden");
+    } else {
+      difficultyGroup.classList.remove("hidden");
+    }
+  }
+
   // Cập nhật hiển thị thông tin điểm dựa trên chế độ chơi và độ khó
   updatePointsInfoVisibility() {
     const pointsInfo = document.getElementById("pointsInfo");
@@ -695,6 +696,23 @@ class TicTacToeAI {
 
     // Luôn hiển thị thông tin điểm để người chơi biết cách tính
     pointsInfo.style.display = "block";
+  }
+
+  // Cập nhật hiển thị thông tin AI dựa trên chế độ chơi
+  updateAIInfoVisibility() {
+    const aiInfo = document.querySelector(".ai-info");
+    const evaluationInfo = document.getElementById("evaluationInfo");
+    if (!aiInfo) return;
+
+    if (this.gameMode === "two") {
+      aiInfo.classList.add("hidden");
+      // Xóa nội dung thông tin đánh giá khi chuyển sang chế độ 2 người
+      if (evaluationInfo) {
+        evaluationInfo.textContent = "";
+      }
+    } else {
+      aiInfo.classList.remove("hidden");
+    }
   }
 
   // Screen Management
@@ -996,6 +1014,8 @@ class TicTacToeAI {
 
     // Cập nhật hiển thị lựa chọn người chơi đầu (ẩn khi chế độ 2 người)
     this.updateFirstPlayerVisibility();
+    this.updateDifficultyVisibility();
+    this.updateAIInfoVisibility();
 
     if (this.gameMode === "ai") {
       // AI mode (giữ logic cũ)
@@ -1162,11 +1182,13 @@ class TicTacToeAI {
       if (move) {
         this.makeMove(move.row, move.col, this.aiPlayer);
 
-        // Hiển thị thông tin đánh giá
-        const evalInfo = document.getElementById("evaluationInfo");
-        evalInfo.textContent = `AI đã suy nghĩ trong ${
-          endTime - startTime
-        }ms, đánh giá: ${move.score}`;
+        // Hiển thị thông tin đánh giá chỉ trong chế độ chơi với AI
+        if (this.gameMode === "ai") {
+          const evalInfo = document.getElementById("evaluationInfo");
+          evalInfo.textContent = `AI đã suy nghĩ trong ${
+            endTime - startTime
+          }ms, đánh giá: ${move.score}`;
+        }
       }
 
       document.getElementById("aiThinking").classList.add("hidden");
