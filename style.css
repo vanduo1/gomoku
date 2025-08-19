@@ -1289,3 +1289,52 @@ button:active {
 .user-stats .stat:last-child {
   margin-right: 0;
 }
+
+/* Two Player Info Styles */
+.player-info-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player-info-container.hidden {
+  display: none;
+}
+
+.player-info-container .player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 2px solid #ff6347;
+}
+
+.player-label {
+  font-weight: bold;
+  color: #8b0000;
+  min-width: 120px;
+}
+
+.player-name {
+  font-weight: 600;
+  color: #2e8b57;
+}
+
+.player-rating {
+  color: #ff6347;
+  font-size: 14px;
+}
+
+/* Player info text in auth screens */
+.auth-screen .player-info {
+  background: rgba(255, 255, 255, 0.3);
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  color: #8b0000;
+  display: block;
+  border: none;
+}

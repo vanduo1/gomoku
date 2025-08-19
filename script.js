@@ -2,6 +2,7 @@
 class UserManager {
   constructor() {
     this.currentUser = null;
+    this.player2 = null; // NEW: Người chơi thứ 2 cho chế độ 2 người
     this.users = this.loadUsers();
     this.recalculateAllLevels(); // Recalculate levels on initialization
   }
@@ -90,51 +91,88 @@ class UserManager {
     return user;
   }
 
+  // NEW: Đăng nhập người chơi thứ 2
+  loginPlayer2(username, password) {
+    const user = this.users.find(
+      (u) => u.username === username && u.password === password
+    );
+    if (!user) {
+      throw new Error("Tên đăng nhập hoặc mật khẩu không đúng!");
+    }
+    if (this.currentUser && user.username === this.currentUser.username) {
+      throw new Error("Người chơi 2 không thể trùng với người chơi 1!");
+    }
+    this.player2 = user;
+    return user;
+  }
+
   getUser(username) {
     return this.users.find((user) => user.username === username);
   }
 
   logout() {
     this.currentUser = null;
+    this.player2 = null; // NEW: Reset cả người chơi 2
   }
 
-  updateUserStats(result, gameMode = "ai", difficulty = "medium") {
+  updateUserStats(
+    result,
+    gameMode = "ai",
+    difficulty = "medium",
+    winnerPlayer = null
+  ) {
+    if (gameMode === "two" && this.currentUser && this.player2) {
+      // Chế độ 2 người: cập nhật stats cho cả 2 người
+      this.updateTwoPlayerStats(result, winnerPlayer);
+    } else if (this.currentUser) {
+      // Chế độ AI: chỉ cập nhật cho người chơi hiện tại
+      this.updateSinglePlayerStats(result, gameMode, difficulty);
+    }
+  }
+
+  updateSinglePlayerStats(result, gameMode, difficulty) {
     if (!this.currentUser) return;
 
     const stats = this.currentUser.stats;
     stats.totalGames++;
 
-    // Hệ thống rating đơn giản
+    // Hệ thống rating đơn giản - tất cả điểm đều chẵn để chia đôi
     let rating = 0;
 
-    // Điểm cơ bản theo kết quả
+    // Điểm cơ bản theo kết quả (đã chẵn)
     switch (result) {
       case "win":
         stats.wins++;
-        rating = 15; // Thắng: +15 điểm
+        rating = 16; // Thắng: +16 điểm (chẵn)
         break;
       case "loss":
         stats.losses++;
-        rating = -5; // Thua: -5 điểm
+        rating = -4; // Thua: -4 điểm (chẵn)
         break;
       case "draw":
         stats.draws++;
-        rating = 5; // Hòa: +5 điểm
+        rating = 6; // Hòa: +6 điểm (chẵn)
         break;
     }
 
-    // Bonus theo độ khó
+    // Bonus theo độ khó - chỉ áp dụng cho thắng và hòa, không áp dụng cho thua
     const difficultyMultiplier = {
-      easy: 0.5, // AI Dễ: x0.5
+      easy: 0.5, // AI Dễ: x0.5 (16->8, 6->3->4)
       medium: 1.0, // AI Trung bình: x1
-      hard: 1.5, // AI Khó: x1.5
+      hard: 1.5, // AI Khó: x1.5 (16->24, 6->9->10)
     };
 
-    if (gameMode === "two") {
-      rating *= 0.5; // Chơi với người: x0.5 (giống AI dễ)
+    // Chỉ áp dụng multiplier cho thắng và hòa, thua luôn trừ 4 điểm
+    if (result === "loss") {
+      rating = -4; // Thua luôn trừ 4 điểm bất kể độ khó
     } else {
       const multiplier = difficultyMultiplier[difficulty] || 1.0;
       rating = Math.round(rating * multiplier);
+    }
+
+    // Đảm bảo kết quả luôn chẵn
+    if (rating % 2 !== 0) {
+      rating = rating > 0 ? rating + 1 : rating - 1;
     }
 
     // Cập nhật rating (không cho phép âm)
@@ -147,6 +185,67 @@ class UserManager {
       newRating: stats.rating,
       gameMode,
       difficulty,
+    };
+  }
+
+  updateTwoPlayerStats(result, winnerPlayer) {
+    if (!this.currentUser || !this.player2) return;
+
+    const player1Stats = this.currentUser.stats;
+    const player2Stats = this.player2.stats;
+
+    // Cập nhật tổng số trận cho cả 2
+    player1Stats.totalGames++;
+    player2Stats.totalGames++;
+
+    let player1Rating = 0;
+    let player2Rating = 0;
+
+    if (result === "draw") {
+      // Hòa: cả 2 người đều được +6 điểm (chẵn)
+      player1Stats.draws++;
+      player2Stats.draws++;
+      player1Rating = 6;
+      player2Rating = 6;
+    } else if (winnerPlayer === 1) {
+      // Người chơi 1 thắng
+      player1Stats.wins++;
+      player2Stats.losses++;
+      player1Rating = 16; // Thắng: +16 điểm (chẵn)
+      player2Rating = -4; // Thua: -4 điểm (chẵn)
+    } else if (winnerPlayer === 2) {
+      // Người chơi 2 thắng
+      player1Stats.losses++;
+      player2Stats.wins++;
+      player1Rating = -4; // Thua: -4 điểm (chẵn)
+      player2Rating = 16; // Thắng: +16 điểm (chẵn)
+    }
+
+    // Chế độ 2 người: giữ nguyên điểm (không nhân với 0.5 để tránh số lẻ)
+    // player1Rating và player2Rating đã chẵn từ đầu
+
+    // Cập nhật rating (không cho phép âm)
+    player1Stats.rating = Math.max(
+      0,
+      (player1Stats.rating || 0) + player1Rating
+    );
+    player2Stats.rating = Math.max(
+      0,
+      (player2Stats.rating || 0) + player2Rating
+    );
+
+    this.saveUsers();
+
+    return {
+      player1: {
+        ratingChange: player1Rating,
+        newRating: player1Stats.rating,
+      },
+      player2: {
+        ratingChange: player2Rating,
+        newRating: player2Stats.rating,
+      },
+      gameMode: "two",
     };
   }
 
@@ -486,9 +585,18 @@ class TicTacToeAI {
     const gameModeSel = document.getElementById("gameMode");
     if (gameModeSel) {
       gameModeSel.addEventListener("change", () => {
-        this.gameMode = gameModeSel.value; // Cập nhật chế độ chơi hiện tại
+        const newGameMode = gameModeSel.value;
+
+        // Nếu chọn chế độ 2 người và chưa có người chơi thứ 2
+        if (newGameMode === "two" && !this.userManager.player2) {
+          this.showPlayer2LoginScreen();
+          return;
+        }
+
+        this.gameMode = newGameMode; // Cập nhật chế độ chơi hiện tại
         this.updateFirstPlayerVisibility(); // Ẩn/hiện tuỳ chọn người chơi đầu
         this.updatePointsInfoVisibility(); // Cập nhật thông tin điểm
+        this.updatePlayerInfoDisplay(); // Cập nhật hiển thị thông tin người chơi
         this.initializeGame();
       });
     }
@@ -520,6 +628,52 @@ class TicTacToeAI {
         updateDifficultyVisibility();
       }
     }
+
+    // NEW: Event listeners cho đăng nhập 2 người
+    const player2LoginForm = document.getElementById("player2LoginForm");
+    const player2RegisterForm = document.getElementById("player2RegisterForm");
+    const showPlayer2Register = document.getElementById("showPlayer2Register");
+    const showPlayer2Login = document.getElementById("showPlayer2Login");
+    const backToGameMode = document.getElementById("backToGameMode");
+    const backToPlayer2Login = document.getElementById("backToPlayer2Login");
+
+    if (player2LoginForm) {
+      player2LoginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.handlePlayer2Login();
+      });
+    }
+
+    if (player2RegisterForm) {
+      player2RegisterForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.handlePlayer2Register();
+      });
+    }
+
+    if (showPlayer2Register) {
+      showPlayer2Register.addEventListener("click", () => {
+        this.showPlayer2RegisterScreen();
+      });
+    }
+
+    if (showPlayer2Login) {
+      showPlayer2Login.addEventListener("click", () => {
+        this.showPlayer2LoginScreen();
+      });
+    }
+
+    if (backToGameMode) {
+      backToGameMode.addEventListener("click", () => {
+        this.showGameScreen();
+      });
+    }
+
+    if (backToPlayer2Login) {
+      backToPlayer2Login.addEventListener("click", () => {
+        this.showPlayer2LoginScreen();
+      });
+    }
   }
 
   // Hiển thị/ẩn lựa chọn người chơi đầu dựa trên chế độ chơi
@@ -549,6 +703,15 @@ class TicTacToeAI {
     document.getElementById("registerScreen").classList.add("hidden");
     document.getElementById("leaderboardScreen").classList.add("hidden");
     document.getElementById("gameScreen").classList.add("hidden");
+
+    // Check if elements exist before hiding them
+    const player2LoginScreen = document.getElementById("player2LoginScreen");
+    const player2RegisterScreen = document.getElementById(
+      "player2RegisterScreen"
+    );
+
+    if (player2LoginScreen) player2LoginScreen.classList.add("hidden");
+    if (player2RegisterScreen) player2RegisterScreen.classList.add("hidden");
   }
 
   showLoginScreen() {
@@ -587,6 +750,64 @@ class TicTacToeAI {
       backToGameBtn.classList.remove("hidden");
     } else {
       backToGameBtn.classList.add("hidden");
+    }
+  }
+
+  // NEW: Hiển thị màn hình đăng nhập cho người chơi thứ 2
+  showPlayer2LoginScreen() {
+    this.hideAllScreens();
+    const player2LoginScreen = document.getElementById("player2LoginScreen");
+    if (!player2LoginScreen) return;
+
+    player2LoginScreen.classList.remove("hidden");
+
+    const player2LoginError = document.getElementById("player2LoginError");
+    const player2Username = document.getElementById("player2Username");
+    const player2Password = document.getElementById("player2Password");
+    const player1Name = document.getElementById("player1Name");
+
+    if (player2LoginError) player2LoginError.textContent = "";
+    if (player2Username) player2Username.value = "";
+    if (player2Password) player2Password.value = "";
+
+    // Hiển thị tên người chơi 1
+    if (player1Name) {
+      const player1NameText =
+        this.userManager.currentUser?.username || "Unknown";
+      player1Name.textContent = player1NameText;
+    }
+  }
+
+  // NEW: Hiển thị màn hình đăng ký cho người chơi thứ 2
+  showPlayer2RegisterScreen() {
+    this.hideAllScreens();
+    const player2RegisterScreen = document.getElementById(
+      "player2RegisterScreen"
+    );
+    if (!player2RegisterScreen) return;
+
+    player2RegisterScreen.classList.remove("hidden");
+
+    const player2RegisterError = document.getElementById(
+      "player2RegisterError"
+    );
+    const player2RegUsername = document.getElementById("player2RegUsername");
+    const player2RegPassword = document.getElementById("player2RegPassword");
+    const player2ConfirmPassword = document.getElementById(
+      "player2ConfirmPassword"
+    );
+    const player1Name2 = document.getElementById("player1Name2");
+
+    if (player2RegisterError) player2RegisterError.textContent = "";
+    if (player2RegUsername) player2RegUsername.value = "";
+    if (player2RegPassword) player2RegPassword.value = "";
+    if (player2ConfirmPassword) player2ConfirmPassword.value = "";
+
+    // Hiển thị tên người chơi 1
+    if (player1Name2) {
+      const player1NameText =
+        this.userManager.currentUser?.username || "Unknown";
+      player1Name2.textContent = player1NameText;
     }
   }
 
@@ -629,6 +850,48 @@ class TicTacToeAI {
     this.showLoginScreen();
   }
 
+  // NEW: Authentication Methods cho người chơi thứ 2
+  handlePlayer2Login() {
+    const username = document.getElementById("player2Username").value.trim();
+    const password = document.getElementById("player2Password").value;
+    const errorElement = document.getElementById("player2LoginError");
+
+    try {
+      this.userManager.loginPlayer2(username, password);
+      this.gameMode = "two";
+      document.getElementById("gameMode").value = "two";
+      this.updatePlayerInfoDisplay();
+      this.showGameScreen();
+    } catch (error) {
+      errorElement.textContent = error.message;
+    }
+  }
+
+  handlePlayer2Register() {
+    const username = document.getElementById("player2RegUsername").value.trim();
+    const password = document.getElementById("player2RegPassword").value;
+    const confirmPassword = document.getElementById(
+      "player2ConfirmPassword"
+    ).value;
+    const errorElement = document.getElementById("player2RegisterError");
+
+    if (password !== confirmPassword) {
+      errorElement.textContent = "Mật khẩu xác nhận không khớp!";
+      return;
+    }
+
+    try {
+      this.userManager.register(username, password);
+      this.userManager.loginPlayer2(username, password);
+      this.gameMode = "two";
+      document.getElementById("gameMode").value = "two";
+      this.updatePlayerInfoDisplay();
+      this.showGameScreen();
+    } catch (error) {
+      errorElement.textContent = error.message;
+    }
+  }
+
   updateUserInfo() {
     const user = this.userManager.currentUser;
     if (!user) return;
@@ -637,6 +900,50 @@ class TicTacToeAI {
 
     document.getElementById("currentUser").textContent = user.username;
     document.getElementById("userRating").textContent = rating;
+
+    // Cập nhật hiển thị thông tin người chơi
+    this.updatePlayerInfoDisplay();
+  }
+
+  // NEW: Cập nhật hiển thị thông tin người chơi
+  updatePlayerInfoDisplay() {
+    const singlePlayerInfo = document.getElementById("singlePlayerInfo");
+    const twoPlayerInfo = document.getElementById("twoPlayerInfo");
+
+    // Kiểm tra an toàn
+    if (!singlePlayerInfo || !twoPlayerInfo) {
+      return;
+    }
+
+    if (
+      this.gameMode === "two" &&
+      this.userManager.currentUser &&
+      this.userManager.player2
+    ) {
+      // Chế độ 2 người: hiển thị thông tin cả 2 người chơi
+      singlePlayerInfo.classList.add("hidden");
+      twoPlayerInfo.classList.remove("hidden");
+
+      const player1Display = document.getElementById("player1Display");
+      const player1Rating = document.getElementById("player1Rating");
+      const player2Display = document.getElementById("player2Display");
+      const player2Rating = document.getElementById("player2Rating");
+
+      if (player1Display)
+        player1Display.textContent = this.userManager.currentUser.username;
+      if (player1Rating)
+        player1Rating.textContent =
+          this.userManager.currentUser.stats.rating || 0;
+
+      if (player2Display)
+        player2Display.textContent = this.userManager.player2.username;
+      if (player2Rating)
+        player2Rating.textContent = this.userManager.player2.stats.rating || 0;
+    } else {
+      // Chế độ 1 người: hiển thị thông tin người chơi hiện tại
+      singlePlayerInfo.classList.remove("hidden");
+      twoPlayerInfo.classList.add("hidden");
+    }
   }
 
   updateLeaderboard() {
@@ -1049,15 +1356,30 @@ class TicTacToeAI {
       }
     }
 
-    // Nếu không có nước thắng ngay, dùng minimax như cũ
-    for (const move of candidateMoves) {
-      const { row, col } = move;
-      this.board[row][col] = this.aiPlayer;
-      const score = this.minimax(0, false, -Infinity, Infinity);
-      this.board[row][col] = "";
-      if (score > bestScore) {
-        bestScore = score;
-        bestMove = { row, col, score };
+    // Phân biệt độ khó Medium và Hard
+    if (this.difficulty === "medium") {
+      // Medium: Chỉ sử dụng minimax đơn giản, không có hàm đánh giá phức tạp
+      for (const move of candidateMoves) {
+        const { row, col } = move;
+        this.board[row][col] = this.aiPlayer;
+        const score = this.minimaxSimple(0, false, -Infinity, Infinity);
+        this.board[row][col] = "";
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = { row, col, score };
+        }
+      }
+    } else {
+      // Hard: Sử dụng minimax với hàm đánh giá phức tạp
+      for (const move of candidateMoves) {
+        const { row, col } = move;
+        this.board[row][col] = this.aiPlayer;
+        const score = this.minimax(0, false, -Infinity, Infinity);
+        this.board[row][col] = "";
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = { row, col, score };
+        }
       }
     }
     return bestMove;
@@ -1092,6 +1414,46 @@ class TicTacToeAI {
         const { row, col } = move;
         this.board[row][col] = this.humanPlayer;
         const score = this.minimax(depth + 1, true, alpha, beta);
+        this.board[row][col] = "";
+        minScore = Math.min(score, minScore);
+        beta = Math.min(beta, score);
+        if (beta <= alpha) break; // cắt tỉa alpha-beta
+      }
+      return minScore;
+    }
+  }
+
+  // Hàm minimax đơn giản cho AI Medium (không có hàm đánh giá phức tạp)
+  minimaxSimple(depth, isMaximizing, alpha, beta) {
+    const winner = this.checkWinner();
+    if (winner === this.aiPlayer) return 100 - depth;
+    if (winner === this.humanPlayer) return -100 + depth;
+    if (this.isBoardFull() || depth >= this.maxDepth) {
+      // Chỉ trả về 0 thay vì sử dụng hàm đánh giá phức tạp
+      return 0;
+    }
+
+    // Sử dụng các nước đi tiềm năng để giảm số lượng nhánh
+    const moves = this.getCandidateMoves();
+
+    if (isMaximizing) {
+      let maxScore = -Infinity;
+      for (const move of moves) {
+        const { row, col } = move;
+        this.board[row][col] = this.aiPlayer;
+        const score = this.minimaxSimple(depth + 1, false, alpha, beta);
+        this.board[row][col] = "";
+        maxScore = Math.max(score, maxScore);
+        alpha = Math.max(alpha, score);
+        if (beta <= alpha) break; // cắt tỉa alpha-beta
+      }
+      return maxScore;
+    } else {
+      let minScore = Infinity;
+      for (const move of moves) {
+        const { row, col } = move;
+        this.board[row][col] = this.humanPlayer;
+        const score = this.minimaxSimple(depth + 1, true, alpha, beta);
         this.board[row][col] = "";
         minScore = Math.min(score, minScore);
         beta = Math.min(beta, score);
@@ -1324,8 +1686,22 @@ class TicTacToeAI {
         status.textContent = `Lượt của bạn (${this.humanPlayer})`;
       }
     } else {
-      status.textContent = `Lượt của ${this.currentPlayer}`;
+      // Chế độ 2 người
+      const playerName = this.getPlayerName(this.currentPlayer);
+      status.textContent = `Lượt của ${playerName} (${this.currentPlayer})`;
     }
+  }
+
+  // NEW: Lấy tên người chơi theo ký hiệu X hoặc O
+  getPlayerName(symbol) {
+    if (this.gameMode === "two") {
+      if (symbol === "X") {
+        return this.userManager.currentUser?.username || "Người chơi 1";
+      } else {
+        return this.userManager.player2?.username || "Người chơi 2";
+      }
+    }
+    return symbol;
   }
 
   endGame(winner) {
@@ -1336,11 +1712,19 @@ class TicTacToeAI {
     if (winner === "tie") {
       status.textContent = "Hòa!";
       this.scores.tie++;
-      statsResult = this.userManager.updateUserStats(
-        "draw",
-        this.gameMode,
-        this.difficulty
-      );
+      if (this.gameMode === "two") {
+        statsResult = this.userManager.updateUserStats(
+          "draw",
+          this.gameMode,
+          this.difficulty
+        );
+      } else {
+        statsResult = this.userManager.updateUserStats(
+          "draw",
+          this.gameMode,
+          this.difficulty
+        );
+      }
     } else if (this.gameMode === "ai") {
       // AI mode
       if (winner === this.humanPlayer) {
@@ -1362,32 +1746,49 @@ class TicTacToeAI {
       }
     } else {
       // Two player mode
-      if (winner === "X") {
-        status.textContent = "X thắng!";
-        this.scores.x++;
-        statsResult = this.userManager.updateUserStats(
-          "win",
-          this.gameMode,
-          this.difficulty
-        );
-      } else {
-        status.textContent = "O thắng!";
-        this.scores.o++;
-        statsResult = this.userManager.updateUserStats(
-          "loss",
-          this.gameMode,
-          this.difficulty
-        );
-      }
+      const winnerName = this.getPlayerName(winner);
+      status.textContent = `${winnerName} thắng!`;
+      this.scores[winner.toLowerCase()]++;
+
+      // Xác định người chơi thắng (1 = X, 2 = O)
+      const winnerPlayer = winner === "X" ? 1 : 2;
+      statsResult = this.userManager.updateUserStats(
+        "win", // Sẽ được xử lý bên trong updateUserStats cho 2 người
+        this.gameMode,
+        this.difficulty,
+        winnerPlayer
+      );
     }
 
     // Hiển thị thông tin điểm đã nhận
-    if (statsResult && statsResult.pointsEarned > 0) {
-      const difficultyText =
-        statsResult.gameMode === "ai"
-          ? ` (độ khó: ${statsResult.difficulty})`
-          : " (vs người chơi)";
-      status.textContent += ` +${statsResult.pointsEarned} điểm${difficultyText}`;
+    if (statsResult) {
+      if (
+        this.gameMode === "two" &&
+        statsResult.player1 &&
+        statsResult.player2
+      ) {
+        // Chế độ 2 người: hiển thị điểm cho cả 2 người
+        const player1Name =
+          this.userManager.currentUser?.username || "Người chơi 1";
+        const player2Name =
+          this.userManager.player2?.username || "Người chơi 2";
+
+        status.textContent += ` | ${player1Name}: ${
+          statsResult.player1.ratingChange > 0 ? "+" : ""
+        }${statsResult.player1.ratingChange} điểm`;
+        status.textContent += ` | ${player2Name}: ${
+          statsResult.player2.ratingChange > 0 ? "+" : ""
+        }${statsResult.player2.ratingChange} điểm`;
+      } else if (statsResult.ratingChange !== undefined) {
+        // Chế độ AI: hiển thị điểm cho người chơi hiện tại
+        const difficultyText =
+          statsResult.gameMode === "ai"
+            ? ` (độ khó: ${statsResult.difficulty})`
+            : " (vs người chơi)";
+        status.textContent += ` ${statsResult.ratingChange > 0 ? "+" : ""}${
+          statsResult.ratingChange
+        } điểm${difficultyText}`;
+      }
     }
 
     this.updateScore();
@@ -1407,8 +1808,17 @@ class TicTacToeAI {
       document.getElementById("playerXScore").textContent = this.scores.human;
       document.getElementById("playerOScore").textContent = this.scores.ai;
     } else {
-      document.getElementById("playerXLabel").textContent = "X";
-      document.getElementById("playerOLabel").textContent = "O";
+      // Chế độ 2 người: hiển thị tên người chơi
+      const player1Name =
+        this.userManager.currentUser?.username || "Người chơi 1";
+      const player2Name = this.userManager.player2?.username || "Người chơi 2";
+
+      document.getElementById(
+        "playerXLabel"
+      ).textContent = `${player1Name} (X)`;
+      document.getElementById(
+        "playerOLabel"
+      ).textContent = `${player2Name} (O)`;
       document.getElementById("playerXScore").textContent = this.scores.x;
       document.getElementById("playerOScore").textContent = this.scores.o;
     }

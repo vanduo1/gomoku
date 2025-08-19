@@ -16,7 +16,7 @@
     <!-- Màn hình đăng nhập -->
     <div id="loginScreen" class="auth-screen">
       <div class="auth-container">
-        <h1 class="">Game Caro AI</h1>
+        <h1 class="">Caro Game</h1>
         <h2>Đăng nhập</h2>
 
         <form id="loginForm" class="auth-form">
@@ -50,7 +50,7 @@
     <!-- Màn hình đăng ký -->
     <div id="registerScreen" class="auth-screen hidden">
       <div class="auth-container">
-        <h1>Game Caro AI</h1>
+        <h1>Caro Game</h1>
         <h2>Đăng ký</h2>
 
         <form id="registerForm" class="auth-form">
@@ -82,6 +82,90 @@
           Đã có tài khoản?
           <button id="showLogin" class="link-btn">Đăng nhập</button>
         </p>
+      </div>
+    </div>
+
+    <!-- Màn hình đăng nhập cho người chơi thứ 2 -->
+    <div id="player2LoginScreen" class="auth-screen hidden">
+      <div class="auth-container">
+        <h1>Caro Game</h1>
+        <h2>Đăng nhập Người chơi 2</h2>
+        <p class="player-info">
+          Người chơi 1: <strong id="player1Name"></strong>
+        </p>
+
+        <form id="player2LoginForm" class="auth-form">
+          <div class="form-group">
+            <label for="player2Username">Tên đăng nhập:</label>
+            <input type="text" id="player2Username" required />
+          </div>
+
+          <div class="form-group">
+            <label for="player2Password">Mật khẩu:</label>
+            <input type="password" id="player2Password" required />
+          </div>
+
+          <button type="submit" class="auth-btn">Đăng nhập</button>
+          <div id="player2LoginError" class="error-message"></div>
+        </form>
+
+        <p class="auth-switch">
+          Chưa có tài khoản?
+          <button id="showPlayer2Register" class="link-btn">
+            Đăng ký ngay
+          </button>
+        </p>
+
+        <div class="auth-footer">
+          <button id="backToGameMode" class="secondary-btn">Quay lại</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Màn hình đăng ký cho người chơi thứ 2 -->
+    <div id="player2RegisterScreen" class="auth-screen hidden">
+      <div class="auth-container">
+        <h1>Caro Game</h1>
+        <h2>Đăng ký Người chơi 2</h2>
+        <p class="player-info">
+          Người chơi 1: <strong id="player1Name2"></strong>
+        </p>
+
+        <form id="player2RegisterForm" class="auth-form">
+          <div class="form-group">
+            <label for="player2RegUsername">Tên đăng nhập:</label>
+            <input type="text" id="player2RegUsername" required minlength="3" />
+          </div>
+
+          <div class="form-group">
+            <label for="player2RegPassword">Mật khẩu:</label>
+            <input
+              type="password"
+              id="player2RegPassword"
+              required
+              minlength="4"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="player2ConfirmPassword">Xác nhận mật khẩu:</label>
+            <input type="password" id="player2ConfirmPassword" required />
+          </div>
+
+          <button type="submit" class="auth-btn">Đăng ký</button>
+          <div id="player2RegisterError" class="error-message"></div>
+        </form>
+
+        <p class="auth-switch">
+          Đã có tài khoản?
+          <button id="showPlayer2Login" class="link-btn">Đăng nhập</button>
+        </p>
+
+        <div class="auth-footer">
+          <button id="backToPlayer2Login" class="secondary-btn">
+            Quay lại
+          </button>
+        </div>
       </div>
     </div>
 
@@ -119,8 +203,8 @@
           <div class="level-info">
             <h3>Hệ thống Điểm đơn giản:</h3>
             <p>
-              <strong>Thắng:</strong> +15 điểm | <strong>Hòa:</strong> +5 điểm |
-              <strong>Thua:</strong> -5 điểm (tối thiểu 0)
+              <strong>Thắng:</strong> +16 điểm | <strong>Hòa:</strong> +6 điểm |
+              <strong>Thua:</strong> -4 điểm (tối thiểu 0)
             </p>
             <p>
               <strong>Bonus độ khó:</strong> AI Dễ (x0.5), AI Trung bình (x1),
@@ -143,9 +227,30 @@
     <div id="gameScreen" class="container hidden">
       <div class="user-info">
         <div class="user-details">
-          <span>Xin chào, <span id="currentUser"></span>!</span>
-          <div class="user-stats">
-            <span class="stat">Điểm: <span id="userRating">0</span></span>
+          <!-- Chế độ 1 người -->
+          <div id="singlePlayerInfo" class="player-info-container">
+            <span>Xin chào, <span id="currentUser"></span>!</span>
+            <div class="user-stats">
+              <span class="stat">Điểm: <span id="userRating">0</span></span>
+            </div>
+          </div>
+
+          <!-- Chế độ 2 người -->
+          <div id="twoPlayerInfo" class="player-info-container hidden">
+            <div class="player-info">
+              <span class="player-label">Người chơi 1 (X):</span>
+              <span class="player-name" id="player1Display"></span>
+              <span class="player-rating"
+                >(<span id="player1Rating">0</span> điểm)</span
+              >
+            </div>
+            <div class="player-info">
+              <span class="player-label">Người chơi 2 (O):</span>
+              <span class="player-name" id="player2Display"></span>
+              <span class="player-rating"
+                >(<span id="player2Rating">0</span> điểm)</span
+              >
+            </div>
           </div>
         </div>
         <div class="user-actions">
