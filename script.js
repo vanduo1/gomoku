@@ -167,12 +167,18 @@ class UserManager {
       rating = -4; // Thua luôn trừ 4 điểm bất kể độ khó
     } else {
       const multiplier = difficultyMultiplier[difficulty] || 1.0;
-      rating = Math.round(rating * multiplier);
-    }
+      rating = rating * multiplier;
 
-    // Đảm bảo kết quả luôn chẵn
-    if (rating % 2 !== 0) {
-      rating = rating > 0 ? rating + 1 : rating - 1;
+      // Khi nhân với 0.5 hoặc 1.5, không cần làm tròn số chẵn
+      if (multiplier === 0.5 || multiplier === 1.5) {
+        rating = Math.round(rating);
+      } else {
+        rating = Math.round(rating);
+        // Đảm bảo kết quả luôn chẵn cho các trường hợp khác
+        if (rating % 2 !== 0) {
+          rating = rating > 0 ? rating + 1 : rating - 1;
+        }
+      }
     }
 
     // Cập nhật rating (không cho phép âm)
@@ -221,8 +227,19 @@ class UserManager {
       player2Rating = 16; // Thắng: +16 điểm (chẵn)
     }
 
-    // Chế độ 2 người: giữ nguyên điểm (không nhân với 0.5 để tránh số lẻ)
-    // player1Rating và player2Rating đã chẵn từ đầu
+    // Chế độ 2 người: nhân điểm với 0.5 (như AI dễ) nhưng thua vẫn trừ bình thường
+    // Chỉ áp dụng hệ số 0.5 cho thắng và hòa, thua vẫn trừ đủ -4 điểm
+    if (player1Rating > 0) {
+      // Thắng hoặc hòa - nhân với 0.5 không cần làm tròn số chẵn
+      player1Rating = Math.round(player1Rating * 0.5);
+    }
+    // player1Rating âm (thua) thì giữ nguyên -4
+
+    if (player2Rating > 0) {
+      // Thắng hoặc hòa - nhân với 0.5 không cần làm tròn số chẵn
+      player2Rating = Math.round(player2Rating * 0.5);
+    }
+    // player2Rating âm (thua) thì giữ nguyên -4
 
     // Cập nhật rating (không cho phép âm)
     player1Stats.rating = Math.max(
