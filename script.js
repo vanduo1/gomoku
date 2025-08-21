@@ -260,20 +260,6 @@ class UserManager {
     };
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   getLeaderboard(sortBy = "rating") {
     const leaderboard = this.users.map((user) => {
       // Tính tỷ lệ thắng: thắng / (thắng + thua), không tính hòa
