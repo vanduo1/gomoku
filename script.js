@@ -1219,6 +1219,7 @@ class TicTacToeAI {
   getCandidateMoves(radius = 2) {
     const moves = [];
     const added = new Set();
+    const priorityMoves = []; // Các nước đi ưu tiên cao
 
     // Duyệt qua toàn bộ bàn cờ để tìm các ô đã đánh
     for (let i = 0; i < this.size; i++) {
@@ -1240,7 +1241,16 @@ class TicTacToeAI {
                 const key = `${row},${col}`;
                 if (!added.has(key)) {
                   added.add(key);
-                  moves.push({ row, col });
+
+                  // Kiểm tra nếu đây là vị trí có thể thắng hoặc cần chặn
+                  const isPriority = this.isPriorityMove(row, col);
+                  const move = { row, col };
+
+                  if (isPriority) {
+                    priorityMoves.push(move);
+                  } else {
+                    moves.push(move);
+                  }
                 }
               }
             }
@@ -1250,12 +1260,97 @@ class TicTacToeAI {
     }
 
     // Nếu bàn cờ trống, chọn ô trung tâm
-    if (moves.length === 0) {
+    if (moves.length === 0 && priorityMoves.length === 0) {
       const center = Math.floor(this.size / 2);
       moves.push({ row: center, col: center });
     }
 
-    return moves;
+    // Trả về các nước đi ưu tiên trước, sau đó đến các nước đi thường
+    return [...priorityMoves, ...moves];
+  }
+
+  // Kiểm tra xem một vị trí có phải là nước đi ưu tiên không
+  isPriorityMove(row, col) {
+    // Thử đặt quân AI và kiểm tra
+    this.board[row][col] = this.aiPlayer;
+    const aiWins = this.checkWinner() === this.aiPlayer;
+    this.board[row][col] = "";
+
+    if (aiWins) return true; // Thắng ngay
+
+    // Thử đặt quân đối thủ và kiểm tra
+    this.board[row][col] = this.humanPlayer;
+    const humanWins = this.checkWinner() === this.humanPlayer;
+    this.board[row][col] = "";
+
+    if (humanWins) return true; // Cần chặn
+
+    // Kiểm tra xem có tạo ra dãy 3 quân liên tiếp không
+    this.board[row][col] = this.aiPlayer;
+    const aiStrength = this.evaluatePosition(row, col, this.aiPlayer);
+    this.board[row][col] = "";
+
+    this.board[row][col] = this.humanPlayer;
+    const humanStrength = this.evaluatePosition(row, col, this.humanPlayer);
+    this.board[row][col] = "";
+
+    return aiStrength >= 50 || humanStrength >= 50; // Vị trí có giá trị chiến thuật cao
+  }
+
+  // Đánh giá giá trị của một vị trí cho một người chơi
+  evaluatePosition(row, col, player) {
+    let maxValue = 0;
+    const directions = [
+      [0, 1],
+      [1, 0],
+      [1, 1],
+      [1, -1],
+    ];
+
+    for (const [dx, dy] of directions) {
+      let count = 1; // bao gồm ô hiện tại
+
+      // Đếm về một phía
+      let r = row + dx,
+        c = col + dy;
+      while (
+        r >= 0 &&
+        r < this.size &&
+        c >= 0 &&
+        c < this.size &&
+        this.board[r][c] === player
+      ) {
+        count++;
+        r += dx;
+        c += dy;
+      }
+
+      // Đếm về phía ngược lại
+      r = row - dx;
+      c = col - dy;
+      while (
+        r >= 0 &&
+        r < this.size &&
+        c >= 0 &&
+        c < this.size &&
+        this.board[r][c] === player
+      ) {
+        count++;
+        r -= dx;
+        c -= dy;
+      }
+
+      // Tính điểm dựa trên số quân liên tiếp
+      let value = 0;
+      if (count >= 4) value = 1000; // 4+ quân liên tiếp
+      else if (count === 3) value = 100; // 3 quân liên tiếp
+      else if (count === 2) value = 10; // 2 quân liên tiếp
+      else value = 1; // 1 quân
+
+      maxValue = Math.max(maxValue, value);
+    }
+
+    return maxValue;
   }
 
   // Logic đơn giản cho AI dễ - có một chút chiến thuật cơ bản
@@ -1395,9 +1490,21 @@ class TicTacToeAI {
       }
     }
 
+    // Ưu tiên chặn đối thủ thắng ngay (cho cả medium và hard)
+    for (const move of candidateMoves) {
+      const { row, col } = move;
+      this.board[row][col] = this.humanPlayer;
+      const winner = this.checkWinner();
+      this.board[row][col] = "";
+      if (winner === this.humanPlayer) {
+        // Nếu không chặn nước này thì thua ngay, phải chặn
+        return { row, col, score: 50000 };
+      }
+    }
+
     // Phân biệt độ khó Medium và Hard
     if (this.difficulty === "medium") {
-      // Medium: Chỉ sử dụng minimax đơn giản, không có hàm đánh giá phức tạp
+      // Medium: Sử dụng minimax đơn giản với hàm đánh giá cơ bản
       for (const move of candidateMoves) {
         const { row, col } = move;
         this.board[row][col] = this.aiPlayer;
@@ -1462,14 +1569,14 @@ class TicTacToeAI {
     }
   }
 
-  // Hàm minimax đơn giản cho AI Medium (không có hàm đánh giá phức tạp)
+  // Hàm minimax đơn giản cho AI Medium (có hàm đánh giá cơ bản)
   minimaxSimple(depth, isMaximizing, alpha, beta) {
     const winner = this.checkWinner();
     if (winner === this.aiPlayer) return 100 - depth;
     if (winner === this.humanPlayer) return -100 + depth;
     if (this.isBoardFull() || depth >= this.maxDepth) {
-      // Chỉ trả về 0 thay vì sử dụng hàm đánh giá phức tạp
-      return 0;
+      // Sử dụng hàm đánh giá cơ bản cho AI Medium
+      return this.evaluateBoardSimple();
     }
 
     // Sử dụng các nước đi tiềm năng để giảm số lượng nhánh
@@ -1500,6 +1607,106 @@ class TicTacToeAI {
       }
       return minScore;
     }
+  }
+
+  // Hàm đánh giá đơn giản cho AI Medium
+  evaluateBoardSimple() {
+    let score = 0;
+    const winLength = this.getWinLength();
+
+    // Quét toàn bộ bàn cờ để tìm các dãy quân liên tiếp
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        // Kiểm tra 4 hướng: ngang, dọc, chéo chính, chéo phụ
+        const directions = [
+          [0, 1], // ngang
+          [1, 0], // dọc
+          [1, 1], // chéo chính
+          [1, -1], // chéo phụ
+        ];
+
+        for (const [dx, dy] of directions) {
+          // Đánh giá dãy quân AI
+          const aiLine = this.evaluateLineSimple(
+            i,
+            j,
+            dx,
+            dy,
+            this.aiPlayer,
+            winLength
+          );
+          score += aiLine;
+
+          // Đánh giá dãy quân đối thủ (để chặn)
+          const humanLine = this.evaluateLineSimple(
+            i,
+            j,
+            dx,
+            dy,
+            this.humanPlayer,
+            winLength
+          );
+          score -= humanLine;
+        }
+      }
+    }
+
+    // Thêm điểm cho vị trí trung tâm
+    const center = Math.floor(this.size / 2);
+    if (this.board[center] && this.board[center][center] === this.aiPlayer)
+      score += 2;
+    if (this.board[center] && this.board[center][center] === this.humanPlayer)
+      score -= 2;
+
+    return score;
+  }
+
+  // Hàm đánh giá dãy quân đơn giản
+  evaluateLineSimple(startRow, startCol, dx, dy, player, winLength) {
+    let count = 0; // số quân của player trong dãy
+    let empty = 0; // số ô trống trong dãy
+    let blocked = 0; // số đầu bị chặn
+
+    // Kiểm tra dãy có độ dài winLength
+    for (let k = 0; k < winLength; k++) {
+      const row = startRow + k * dx;
+      const col = startCol + k * dy;
+
+      if (row < 0 || row >= this.size || col < 0 || col >= this.size) {
+        blocked++;
+        continue;
+      }
+
+      if (this.board[row][col] === player) {
+        count++;
+      } else if (this.board[row][col] === "") {
+        empty++;
+      } else {
+        blocked++;
+      }
+    }
+
+    // Không xét dãy không có quân của player
+    if (count === 0) return 0;
+
+    // Chấm điểm đơn giản hơn cho AI Medium
+    let score = 0;
+
+    if (count >= winLength - 1 && empty >= 1 && blocked < 2) {
+      // Sắp thắng (4 quân liên tiếp trong dãy 5)
+      score += 1000;
+    } else if (count >= winLength - 2 && empty >= 2 && blocked < 2) {
+      // 3 quân liên tiếp có thể mở rộng
+      score += 100;
+    } else if (count >= 2 && empty >= 1 && blocked < 2) {
+      // 2 quân liên tiếp có thể mở rộng
+      score += 10;
+    } else if (count >= 1 && empty >= 1) {
+      // 1 quân có thể mở rộng
+      score += 1;
+    }
+
+    return score;
   }
 
   evaluateBoard() {
