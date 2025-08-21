@@ -2,14 +2,13 @@
 class UserManager {
   constructor() {
     this.currentUser = null;
-    this.player2 = null; // NEW: Người chơi thứ 2 cho chế độ 2 người
+    this.player2 = null;
     this.users = this.loadUsers();
-    this.initializeUserStats(); // Initialize user stats on initialization
+    this.initializeUserStats();
   }
 
   loadUsers() {
     const saved = JSON.parse(localStorage.getItem("caroUsers") || "[]");
-    // Ensure all users have required properties
     return saved.map((user) => ({
       username: user.username,
       password: user.password,
@@ -18,7 +17,7 @@ class UserManager {
         losses: user.stats?.losses || 0,
         draws: user.stats?.draws || 0,
         totalGames: user.stats?.totalGames || 0,
-        rating: user.stats?.rating || 0, // Điểm Elo
+        rating: user.stats?.rating || 0,
         ...user.stats,
       },
     }));
@@ -29,7 +28,6 @@ class UserManager {
   }
 
   initializeUserStats() {
-    // Đảm bảo tất cả user có rating
     let updated = false;
     this.users.forEach((user) => {
       if (typeof user.stats.rating !== "number") {
@@ -44,7 +42,6 @@ class UserManager {
   }
 
   register(username, password) {
-    // Check if username already exists
     if (this.users.find((user) => user.username === username)) {
       throw new Error("Tên đăng nhập đã tồn tại!");
     }
@@ -65,7 +62,7 @@ class UserManager {
         losses: 0,
         draws: 0,
         totalGames: 0,
-        rating: 0, // Điểm Elo bắt đầu từ 0
+        rating: 0,
       },
     };
 
@@ -85,7 +82,6 @@ class UserManager {
     return user;
   }
 
-  // NEW: Đăng nhập người chơi thứ 2
   loginPlayer2(username, password) {
     const user = this.users.find(
       (u) => u.username === username && u.password === password
@@ -106,7 +102,7 @@ class UserManager {
 
   logout() {
     this.currentUser = null;
-    this.player2 = null; // NEW: Reset cả người chơi 2
+    this.player2 = null;
   }
 
   updateUserStats(
@@ -116,10 +112,8 @@ class UserManager {
     winnerPlayer = null
   ) {
     if (gameMode === "two" && this.currentUser && this.player2) {
-      // Chế độ 2 người: cập nhật stats cho cả 2 người
       this.updateTwoPlayerStats(result, winnerPlayer);
     } else if (this.currentUser) {
-      // Chế độ AI: chỉ cập nhật cho người chơi hiện tại
       this.updateSinglePlayerStats(result, gameMode, difficulty);
     }
   }
@@ -130,52 +124,45 @@ class UserManager {
     const stats = this.currentUser.stats;
     stats.totalGames++;
 
-    // Hệ thống rating đơn giản - tất cả điểm đều chẵn để chia đôi
     let rating = 0;
 
-    // Điểm cơ bản theo kết quả (đã chẵn)
     switch (result) {
       case "win":
         stats.wins++;
-        rating = 16; // Thắng: +16 điểm (chẵn)
+        rating = 16;
         break;
       case "loss":
         stats.losses++;
-        rating = -4; // Thua: -4 điểm (chẵn)
+        rating = -4;
         break;
       case "draw":
         stats.draws++;
-        rating = 6; // Hòa: +6 điểm (chẵn)
+        rating = 6;
         break;
     }
 
-    // Bonus theo độ khó - chỉ áp dụng cho thắng và hòa, không áp dụng cho thua
     const difficultyMultiplier = {
-      easy: 0.5, // AI Dễ: x0.5 (16->8, 6->3->4)
-      medium: 1.0, // AI Trung bình: x1
-      hard: 1.5, // AI Khó: x1.5 (16->24, 6->9->10)
+      easy: 0.5,
+      medium: 1.0,
+      hard: 1.5,
     };
 
-    // Chỉ áp dụng multiplier cho thắng và hòa, thua luôn trừ 4 điểm
     if (result === "loss") {
-      rating = -4; // Thua luôn trừ 4 điểm bất kể độ khó
+      rating = -4;
     } else {
       const multiplier = difficultyMultiplier[difficulty] || 1.0;
       rating = rating * multiplier;
 
-      // Khi nhân với 0.5 hoặc 1.5, không cần làm tròn số chẵn
       if (multiplier === 0.5 || multiplier === 1.5) {
         rating = Math.round(rating);
       } else {
         rating = Math.round(rating);
-        // Đảm bảo kết quả luôn chẵn cho các trường hợp khác
         if (rating % 2 !== 0) {
           rating = rating > 0 ? rating + 1 : rating - 1;
         }
       }
     }
 
-    // Cập nhật rating (không cho phép âm)
     stats.rating = Math.max(0, (stats.rating || 0) + rating);
 
     this.saveUsers();
@@ -194,7 +181,6 @@ class UserManager {
     const player1Stats = this.currentUser.stats;
     const player2Stats = this.player2.stats;
 
-    // Cập nhật tổng số trận cho cả 2
     player1Stats.totalGames++;
     player2Stats.totalGames++;
 
@@ -202,40 +188,30 @@ class UserManager {
     let player2Rating = 0;
 
     if (result === "draw") {
-      // Hòa: cả 2 người đều được +6 điểm (chẵn)
       player1Stats.draws++;
       player2Stats.draws++;
       player1Rating = 6;
       player2Rating = 6;
     } else if (winnerPlayer === 1) {
-      // Người chơi 1 thắng
       player1Stats.wins++;
       player2Stats.losses++;
-      player1Rating = 16; // Thắng: +16 điểm (chẵn)
-      player2Rating = -4; // Thua: -4 điểm (chẵn)
+      player1Rating = 16;
+      player2Rating = -4;
     } else if (winnerPlayer === 2) {
-      // Người chơi 2 thắng
       player1Stats.losses++;
       player2Stats.wins++;
-      player1Rating = -4; // Thua: -4 điểm (chẵn)
-      player2Rating = 16; // Thắng: +16 điểm (chẵn)
+      player1Rating = -4;
+      player2Rating = 16;
     }
 
-    // Chế độ 2 người: nhân điểm với 0.5 (như AI dễ) nhưng thua vẫn trừ bình thường
-    // Chỉ áp dụng hệ số 0.5 cho thắng và hòa, thua vẫn trừ đủ -4 điểm
     if (player1Rating > 0) {
-      // Thắng hoặc hòa - nhân với 0.5 không cần làm tròn số chẵn
       player1Rating = Math.round(player1Rating * 0.5);
     }
-    // player1Rating âm (thua) thì giữ nguyên -4
 
     if (player2Rating > 0) {
-      // Thắng hoặc hòa - nhân với 0.5 không cần làm tròn số chẵn
       player2Rating = Math.round(player2Rating * 0.5);
     }
-    // player2Rating âm (thua) thì giữ nguyên -4
 
-    // Cập nhật rating (không cho phép âm)
     player1Stats.rating = Math.max(
       0,
       (player1Stats.rating || 0) + player1Rating
@@ -262,7 +238,6 @@ class UserManager {
 
   getLeaderboard(sortBy = "rating") {
     const leaderboard = this.users.map((user) => {
-      // Tính tỷ lệ thắng: thắng / (thắng + thua), không tính hòa
       const decisiveGames = user.stats.wins + user.stats.losses;
       const winRate =
         decisiveGames > 0
@@ -281,12 +256,11 @@ class UserManager {
     return leaderboard.sort((a, b) => {
       switch (sortBy) {
         case "rating":
-          // Sắp xếp theo điểm
           return b.rating - a.rating;
         case "totalGames":
           return b.stats.totalGames - a.stats.totalGames;
         default:
-          return b.rating - a.rating; // Mặc định sắp xếp theo điểm
+          return b.rating - a.rating;
       }
     });
   }
@@ -298,14 +272,13 @@ class TicTacToeAI {
     this.board = [];
     this.size = 5;
     this.currentPlayer = "X";
-    this.gameMode = "ai"; // NEW: chế độ chơi (ai | two)
+    this.gameMode = "ai";
     this.gameOver = false;
     this.humanPlayer = "X";
     this.aiPlayer = "O";
     this.maxDepth = 3;
     this.isAITurn = false;
-    this.difficulty = "medium"; // thêm thuộc tính độ khó
-    // Mở rộng điểm số để hỗ trợ 2 chế độ
+    this.difficulty = "medium";
     this.scores = { human: 0, ai: 0, tie: 0, x: 0, o: 0 };
     this.userManager = new UserManager();
 
@@ -389,18 +362,17 @@ class TicTacToeAI {
       gameModeSel.addEventListener("change", () => {
         const newGameMode = gameModeSel.value;
 
-        // Nếu chọn chế độ 2 người và chưa có người chơi thứ 2
         if (newGameMode === "two" && !this.userManager.player2) {
           this.showPlayer2LoginScreen();
           return;
         }
 
-        this.gameMode = newGameMode; // Cập nhật chế độ chọi hiện tại
-        this.updateFirstPlayerVisibility(); // Ẩn/hiện tuỳ chọn người chơi đầu
-        this.updateDifficultyVisibility(); // Ẩn/hiện tuỳ chọn độ khó
-        this.updateAIInfoVisibility(); // Ẩn/hiện thông tin AI
-        this.updatePointsInfoVisibility(); // Cập nhật thông tin điểm
-        this.updatePlayerInfoDisplay(); // Cập nhật hiển thị thông tin người chơi
+        this.gameMode = newGameMode;
+        this.updateFirstPlayerVisibility();
+        this.updateDifficultyVisibility();
+        this.updateAIInfoVisibility();
+        this.updatePointsInfoVisibility();
+        this.updatePlayerInfoDisplay();
         this.initializeGame();
       });
     }
@@ -409,19 +381,17 @@ class TicTacToeAI {
       this.initializeGame();
     });
 
-    // Lắng nghe thay đổi độ khó
     const difficultySel = document.getElementById("difficulty");
     if (difficultySel) {
       difficultySel.addEventListener("change", () => {
         this.difficulty = difficultySel.value;
         this.initializeGame();
       });
-      this.difficulty = difficultySel.value; // Khởi tạo giá trị độ khó
-      // Khởi tạo hiển thị độ khó
+      this.difficulty = difficultySel.value;
       this.updateDifficultyVisibility();
     }
 
-    // NEW: Event listeners cho đăng nhập 2 người
+    // Event listeners cho đăng nhập 2 người
     const player2LoginForm = document.getElementById("player2LoginForm");
     const player2RegisterForm = document.getElementById("player2RegisterForm");
     const showPlayer2Register = document.getElementById("showPlayer2Register");
@@ -491,16 +461,13 @@ class TicTacToeAI {
     }
   }
 
-  // Cập nhật hiển thị thông tin điểm dựa trên chế độ chơi và độ khó
   updatePointsInfoVisibility() {
     const pointsInfo = document.getElementById("pointsInfo");
     if (!pointsInfo) return;
 
-    // Luôn hiển thị thông tin điểm để người chơi biết cách tính
     pointsInfo.style.display = "block";
   }
 
-  // Cập nhật hiển thị thông tin AI dựa trên chế độ chơi
   updateAIInfoVisibility() {
     const aiInfo = document.querySelector(".ai-info");
     const evaluationInfo = document.getElementById("evaluationInfo");
@@ -508,7 +475,6 @@ class TicTacToeAI {
 
     if (this.gameMode === "two") {
       aiInfo.classList.add("hidden");
-      // Xóa nội dung thông tin đánh giá khi chuyển sang chế độ 2 người
       if (evaluationInfo) {
         evaluationInfo.textContent = "";
       }
@@ -517,14 +483,12 @@ class TicTacToeAI {
     }
   }
 
-  // Screen Management
   hideAllScreens() {
     document.getElementById("loginScreen").classList.add("hidden");
     document.getElementById("registerScreen").classList.add("hidden");
     document.getElementById("leaderboardScreen").classList.add("hidden");
     document.getElementById("gameScreen").classList.add("hidden");
 
-    // Check if elements exist before hiding them
     const player2LoginScreen = document.getElementById("player2LoginScreen");
     const player2RegisterScreen = document.getElementById(
       "player2RegisterScreen"
@@ -555,7 +519,7 @@ class TicTacToeAI {
     this.hideAllScreens();
     document.getElementById("gameScreen").classList.remove("hidden");
     this.updateUserInfo();
-    this.updatePointsInfoVisibility(); // Cập nhật thông tin điểm
+    this.updatePointsInfoVisibility();
     this.initializeGame();
   }
 
@@ -564,7 +528,6 @@ class TicTacToeAI {
     document.getElementById("leaderboardScreen").classList.remove("hidden");
     this.updateLeaderboard();
 
-    // Show/hide back to game button based on login status
     const backToGameBtn = document.getElementById("backToGame");
     if (this.userManager.currentUser) {
       backToGameBtn.classList.remove("hidden");
@@ -573,7 +536,6 @@ class TicTacToeAI {
     }
   }
 
-  // NEW: Hiển thị màn hình đăng nhập cho người chơi thứ 2
   showPlayer2LoginScreen() {
     this.hideAllScreens();
     const player2LoginScreen = document.getElementById("player2LoginScreen");
@@ -590,7 +552,6 @@ class TicTacToeAI {
     if (player2Username) player2Username.value = "";
     if (player2Password) player2Password.value = "";
 
-    // Hiển thị tên người chơi 1
     if (player1Name) {
       const player1NameText =
         this.userManager.currentUser?.username || "Unknown";
@@ -598,7 +559,6 @@ class TicTacToeAI {
     }
   }
 
-  // NEW: Hiển thị màn hình đăng ký cho người chơi thứ 2
   showPlayer2RegisterScreen() {
     this.hideAllScreens();
     const player2RegisterScreen = document.getElementById(
@@ -623,7 +583,6 @@ class TicTacToeAI {
     if (player2RegPassword) player2RegPassword.value = "";
     if (player2ConfirmPassword) player2ConfirmPassword.value = "";
 
-    // Hiển thị tên người chơi 1
     if (player1Name2) {
       const player1NameText =
         this.userManager.currentUser?.username || "Unknown";
@@ -670,7 +629,7 @@ class TicTacToeAI {
     this.showLoginScreen();
   }
 
-  // NEW: Authentication Methods cho người chơi thứ 2
+  // Authentication Methods cho người chơi thứ 2
   handlePlayer2Login() {
     const username = document.getElementById("player2Username").value.trim();
     const password = document.getElementById("player2Password").value;
@@ -725,12 +684,10 @@ class TicTacToeAI {
     this.updatePlayerInfoDisplay();
   }
 
-  // NEW: Cập nhật hiển thị thông tin người chơi
   updatePlayerInfoDisplay() {
     const singlePlayerInfo = document.getElementById("singlePlayerInfo");
     const twoPlayerInfo = document.getElementById("twoPlayerInfo");
 
-    // Kiểm tra an toàn
     if (!singlePlayerInfo || !twoPlayerInfo) {
       return;
     }
@@ -740,7 +697,6 @@ class TicTacToeAI {
       this.userManager.currentUser &&
       this.userManager.player2
     ) {
-      // Chế độ 2 người: hiển thị thông tin cả 2 người chơi
       singlePlayerInfo.classList.add("hidden");
       twoPlayerInfo.classList.remove("hidden");
 
@@ -760,7 +716,6 @@ class TicTacToeAI {
       if (player2Rating)
         player2Rating.textContent = this.userManager.player2.stats.rating || 0;
     } else {
-      // Chế độ 1 người: hiển thị thông tin người chơi hiện tại
       singlePlayerInfo.classList.remove("hidden");
       twoPlayerInfo.classList.add("hidden");
     }
@@ -777,7 +732,6 @@ class TicTacToeAI {
       const row = document.createElement("tr");
       const rank = index + 1;
 
-      // Add rank styling
       if (rank === 1) row.classList.add("rank-1");
       else if (rank === 2) row.classList.add("rank-2");
       else if (rank === 3) row.classList.add("rank-3");
@@ -795,14 +749,13 @@ class TicTacToeAI {
     });
   }
 
-  // Game Logic Methods (keeping existing methods and adding integration)
+  // Game Logic Methods
   initializeGame() {
     this.size = parseInt(document.getElementById("boardSize").value);
     this.gameMode = document.getElementById("gameMode")
       ? document.getElementById("gameMode").value
       : "ai";
 
-    // Lấy difficulty một cách an toàn
     const difficultyElement = document.getElementById("difficulty");
     this.difficulty = difficultyElement ? difficultyElement.value : "medium";
 
@@ -811,16 +764,14 @@ class TicTacToeAI {
       .fill()
       .map(() => Array(this.size).fill(""));
     this.gameOver = false;
-    this.moveHistory = []; // Thêm lịch sử nước đi
-    this.redoHistory = []; // Thêm lịch sử nước đi đã lùi lại
+    this.moveHistory = [];
+    this.redoHistory = [];
 
-    // Cập nhật hiển thị lựa chọn người chơi đầu (ẩn khi chế độ 2 người)
     this.updateFirstPlayerVisibility();
     this.updateDifficultyVisibility();
     this.updateAIInfoVisibility();
 
     if (this.gameMode === "ai") {
-      // AI mode (giữ logic cũ)
       const firstPlayer = document.getElementById("firstPlayer").value;
       if (firstPlayer === "human") {
         this.currentPlayer = "X";
@@ -834,32 +785,29 @@ class TicTacToeAI {
         this.isAITurn = true;
       }
     } else {
-      // Two-player mode
-      this.currentPlayer = "X"; // người đăng nhập luôn là X
-      this.humanPlayer = "X"; // để tái sử dụng updateUserStats
-      this.aiPlayer = ""; // không dùng
+      this.currentPlayer = "X";
+      this.humanPlayer = "X";
+      this.aiPlayer = "";
       this.isAITurn = false;
     }
 
     this.createBoard();
     this.updateStatus();
     this.updateScore();
-    this.updateUndoButton(); // Cập nhật trạng thái nút lùi lại
-    this.updateRedoButton(); // Cập nhật trạng thái nút làm lại
+    this.updateUndoButton();
+    this.updateRedoButton();
 
-    // Nếu AI đi trước, thực hiện nước đi
     if (this.gameMode === "ai" && this.isAITurn) {
       setTimeout(() => this.makeAIMove(), 500);
     }
   }
 
-  // Tối ưu độ sâu dựa trên kích thước bàn chơi
   getOptimalDepth(size) {
-    if (size <= 3) return 9; // Bàn nhỏ có thể tìm kiếm sâu
+    if (size <= 3) return 9;
     if (size <= 5) return 4;
     if (size <= 7) return 3;
     if (size <= 9) return 2;
-    return 1; // Bàn rất lớn chỉ dùng độ sâu 1
+    return 1;
   }
 
   createBoard() {
@@ -934,16 +882,14 @@ class TicTacToeAI {
   }
 
   makeMove(row, col, player) {
-    // Xóa lịch sử redo khi có nước đi mới
     this.redoHistory = [];
 
-    // Lưu trạng thái trước khi thực hiện nước đi
     this.moveHistory.push({
       row,
       col,
       player,
       previousPlayer: this.currentPlayer,
-      boardState: this.board.map((row) => [...row]), // Deep copy của board
+      boardState: this.board.map((row) => [...row]),
     });
 
     this.board[row][col] = player;
@@ -959,8 +905,8 @@ class TicTacToeAI {
       this.updateStatus();
     }
 
-    this.updateUndoButton(); // Cập nhật trạng thái nút lùi lại
-    this.updateRedoButton(); // Cập nhật trạng thái nút làm lại
+    this.updateUndoButton();
+    this.updateRedoButton();
   }
 
   makeAIMove() {
@@ -968,15 +914,12 @@ class TicTacToeAI {
 
     document.getElementById("aiThinking").classList.remove("hidden");
 
-    // Sử dụng setTimeout để UI có thể cập nhật
     setTimeout(() => {
       const startTime = Date.now();
       let move;
       if (this.difficulty === "easy") {
-        // EASY: AI có logic cơ bản
         move = this.findEasyMove();
       } else {
-        // MEDIUM & HARD: AI dùng minimax
         move = this.findBestMove();
       }
       const endTime = Date.now();
@@ -984,7 +927,6 @@ class TicTacToeAI {
       if (move) {
         this.makeMove(move.row, move.col, this.aiPlayer);
 
-        // Hiển thị thông tin đánh giá chỉ trong chế độ chơi với AI
         if (this.gameMode === "ai") {
           const evalInfo = document.getElementById("evaluationInfo");
           evalInfo.textContent = `AI đã suy nghĩ trong ${
@@ -995,25 +937,22 @@ class TicTacToeAI {
 
       document.getElementById("aiThinking").classList.add("hidden");
       this.isAITurn = false;
-      this.updateUndoButton(); // Cập nhật nút lùi lại sau khi AI đi
-      this.updateRedoButton(); // Cập nhật nút làm lại sau khi AI đi
+      this.updateUndoButton();
+      this.updateRedoButton();
     }, 100);
   }
 
-  //Lấy danh sách nước đi tiềm năng xung quanh các ô đã đánh để giảm không gian tìm kiếm
   getCandidateMoves(radius = 2) {
     const moves = [];
     const added = new Set();
-    const priorityMoves = []; // Các nước đi ưu tiên cao
+    const priorityMoves = [];
 
-    // Duyệt qua toàn bộ bàn cờ để tìm các ô đã đánh
     for (let i = 0; i < this.size; i++) {
       for (let j = 0; j < this.size; j++) {
         if (this.board[i][j] !== "") {
-          // Xét các ô xung quanh trong phạm vi radius
           for (let dx = -radius; dx <= radius; dx++) {
             for (let dy = -radius; dy <= radius; dy++) {
-              if (dx === 0 && dy === 0) continue; // bỏ qua chính ô đang xét
+              if (dx === 0 && dy === 0) continue;
               const row = i + dx;
               const col = j + dy;
               if (
@@ -1027,7 +966,6 @@ class TicTacToeAI {
                 if (!added.has(key)) {
                   added.add(key);
 
-                  // Kiểm tra nếu đây là vị trí có thể thắng hoặc cần chặn
                   const isPriority = this.isPriorityMove(row, col);
                   const move = { row, col };
 
@@ -1044,33 +982,27 @@ class TicTacToeAI {
       }
     }
 
-    // Nếu bàn cờ trống, chọn ô trung tâm
     if (moves.length === 0 && priorityMoves.length === 0) {
       const center = Math.floor(this.size / 2);
       moves.push({ row: center, col: center });
     }
 
-    // Trả về các nước đi ưu tiên trước, sau đó đến các nước đi thường
     return [...priorityMoves, ...moves];
   }
 
-  // Kiểm tra xem một vị trí có phải là nước đi ưu tiên không
   isPriorityMove(row, col) {
-    // Thử đặt quân AI và kiểm tra
     this.board[row][col] = this.aiPlayer;
     const aiWins = this.checkWinner() === this.aiPlayer;
     this.board[row][col] = "";
 
-    if (aiWins) return true; // Thắng ngay
+    if (aiWins) return true;
 
-    // Thử đặt quân đối thủ và kiểm tra
     this.board[row][col] = this.humanPlayer;
     const humanWins = this.checkWinner() === this.humanPlayer;
     this.board[row][col] = "";
 
-    if (humanWins) return true; // Cần chặn
+    if (humanWins) return true;
 
-    // Kiểm tra xem có tạo ra dãy 3 quân liên tiếp không
     this.board[row][col] = this.aiPlayer;
     const aiStrength = this.evaluatePosition(row, col, this.aiPlayer);
     this.board[row][col] = "";
@@ -1079,10 +1011,9 @@ class TicTacToeAI {
     const humanStrength = this.evaluatePosition(row, col, this.humanPlayer);
     this.board[row][col] = "";
 
-    return aiStrength >= 50 || humanStrength >= 50; // Vị trí có giá trị chiến thuật cao
+    return aiStrength >= 50 || humanStrength >= 50;
   }
 
-  // Đánh giá giá trị của một vị trí cho một người chơi
   evaluatePosition(row, col, player) {
     let maxValue = 0;
     const directions = [
@@ -1093,9 +1024,8 @@ class TicTacToeAI {
     ];
 
     for (const [dx, dy] of directions) {
-      let count = 1; // bao gồm ô hiện tại
+      let count = 1;
 
-      // Đếm về một phía
       let r = row + dx,
         c = col + dy;
       while (
@@ -1110,7 +1040,6 @@ class TicTacToeAI {
         c += dy;
       }
 
-      // Đếm về phía ngược lại
       r = row - dx;
       c = col - dy;
       while (
@@ -1125,12 +1054,11 @@ class TicTacToeAI {
         c -= dy;
       }
 
-      // Tính điểm dựa trên số quân liên tiếp
       let value = 0;
-      if (count >= 4) value = 1000; // 4+ quân liên tiếp
-      else if (count === 3) value = 100; // 3 quân liên tiếp
-      else if (count === 2) value = 10; // 2 quân liên tiếp
-      else value = 1; // 1 quân
+      if (count >= 4) value = 1000;
+      else if (count === 3) value = 100;
+      else if (count === 2) value = 10;
+      else value = 1;
 
       maxValue = Math.max(maxValue, value);
     }
@@ -1138,11 +1066,11 @@ class TicTacToeAI {
     return maxValue;
   }
 
-  // Logic cải tiến cho AI dễ - loại bỏ yếu tố ngẫu nhiên
+  // Logic cải tiến cho AI dễ
   findEasyMove() {
     const candidateMoves = this.getCandidateMoves();
 
-    // 1. Ưu tiên thắng ngay nếu có (luôn thực hiện)
+    // 1. Ưu tiên thắng ngay nếu có
     for (const move of candidateMoves) {
       const { row, col } = move;
       this.board[row][col] = this.aiPlayer;
@@ -1153,7 +1081,7 @@ class TicTacToeAI {
       }
     }
 
-    // 2. Chặn người chơi thắng (luôn thực hiện)
+    // 2. Chặn người chơi thắng
     for (const move of candidateMoves) {
       const { row, col } = move;
       this.board[row][col] = this.humanPlayer;
@@ -1195,26 +1123,24 @@ class TicTacToeAI {
       return bestMove;
     }
 
-    // 5. Nếu không có chiến thuật nào khả thi, chọn ngẫu nhiên
+    // 5. Chọn ngẫu nhiên
     const randomMove =
       candidateMoves[Math.floor(Math.random() * candidateMoves.length)];
     return { row: randomMove.row, col: randomMove.col, score: 0 };
   }
 
-  // Hàm đếm số quân liên tiếp từ một vị trí
   countConsecutive(row, col, player) {
     let maxCount = 1;
     const directions = [
       [0, 1],
       [1, 0],
       [1, 1],
-      [1, -1], // ngang, dọc, chéo chính, chéo phụ
+      [1, -1],
     ];
 
     for (const [dx, dy] of directions) {
       let count = 1;
 
-      // Đếm về một phía
       let r = row + dx,
         c = col + dy;
       while (
@@ -1229,7 +1155,6 @@ class TicTacToeAI {
         c += dy;
       }
 
-      // Đếm về phía ngược lại
       r = row - dx;
       c = col - dy;
       while (
@@ -1262,47 +1187,30 @@ class TicTacToeAI {
       const winner = this.checkWinner();
       this.board[row][col] = "";
       if (winner === this.aiPlayer) {
-        // Nếu đi nước này thắng ngay, chọn luôn
         return { row, col, score: 100000 };
       }
     }
 
-    // Ưu tiên chặn đối thủ thắng ngay (cho cả medium và hard)
+    // Ưu tiên chặn đối thủ thắng ngay
     for (const move of candidateMoves) {
       const { row, col } = move;
       this.board[row][col] = this.humanPlayer;
       const winner = this.checkWinner();
       this.board[row][col] = "";
       if (winner === this.humanPlayer) {
-        // Nếu không chặn nước này thì thua ngay, phải chặn
         return { row, col, score: 50000 };
       }
     }
 
-    // Phân biệt độ khó Medium và Hard
-    if (this.difficulty === "medium") {
-      // Medium: Sử dụng minimax đơn giản với hàm đánh giá cơ bản
-      for (const move of candidateMoves) {
-        const { row, col } = move;
-        this.board[row][col] = this.aiPlayer;
-        const score = this.minimaxSimple(0, false, -Infinity, Infinity);
-        this.board[row][col] = "";
-        if (score > bestScore) {
-          bestScore = score;
-          bestMove = { row, col, score };
-        }
-      }
-    } else {
-      // Hard: Sử dụng minimax với hàm đánh giá phức tạp
-      for (const move of candidateMoves) {
-        const { row, col } = move;
-        this.board[row][col] = this.aiPlayer;
-        const score = this.minimax(0, false, -Infinity, Infinity);
-        this.board[row][col] = "";
-        if (score > bestScore) {
-          bestScore = score;
-          bestMove = { row, col, score };
-        }
+    // Sử dụng minimax với hàm đánh giá dựa trên độ khó
+    for (const move of candidateMoves) {
+      const { row, col } = move;
+      this.board[row][col] = this.aiPlayer;
+      const score = this.minimax(0, false, -Infinity, Infinity);
+      this.board[row][col] = "";
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = { row, col, score };
       }
     }
     return bestMove;
@@ -1316,7 +1224,6 @@ class TicTacToeAI {
       return this.evaluateBoard();
     }
 
-    // Sử dụng các nước đi tiềm năng để giảm số lượng nhánh
     const moves = this.getCandidateMoves();
 
     if (isMaximizing) {
@@ -1328,7 +1235,7 @@ class TicTacToeAI {
         this.board[row][col] = "";
         maxScore = Math.max(score, maxScore);
         alpha = Math.max(alpha, score);
-        if (beta <= alpha) break; // cắt tỉa alpha-beta
+        if (beta <= alpha) break;
       }
       return maxScore;
     } else {
@@ -1340,158 +1247,27 @@ class TicTacToeAI {
         this.board[row][col] = "";
         minScore = Math.min(score, minScore);
         beta = Math.min(beta, score);
-        if (beta <= alpha) break; // cắt tỉa alpha-beta
+        if (beta <= alpha) break;
       }
       return minScore;
     }
-  }
-
-  // Hàm minimax đơn giản cho AI Medium (có hàm đánh giá cơ bản)
-  minimaxSimple(depth, isMaximizing, alpha, beta) {
-    const winner = this.checkWinner();
-    if (winner === this.aiPlayer) return 100 - depth;
-    if (winner === this.humanPlayer) return -100 + depth;
-    if (this.isBoardFull() || depth >= this.maxDepth) {
-      // Sử dụng hàm đánh giá cơ bản cho AI Medium
-      return this.evaluateBoardSimple();
-    }
-
-    // Sử dụng các nước đi tiềm năng để giảm số lượng nhánh
-    const moves = this.getCandidateMoves();
-
-    if (isMaximizing) {
-      let maxScore = -Infinity;
-      for (const move of moves) {
-        const { row, col } = move;
-        this.board[row][col] = this.aiPlayer;
-        const score = this.minimaxSimple(depth + 1, false, alpha, beta);
-        this.board[row][col] = "";
-        maxScore = Math.max(score, maxScore);
-        alpha = Math.max(alpha, score);
-        if (beta <= alpha) break; // cắt tỉa alpha-beta
-      }
-      return maxScore;
-    } else {
-      let minScore = Infinity;
-      for (const move of moves) {
-        const { row, col } = move;
-        this.board[row][col] = this.humanPlayer;
-        const score = this.minimaxSimple(depth + 1, true, alpha, beta);
-        this.board[row][col] = "";
-        minScore = Math.min(score, minScore);
-        beta = Math.min(beta, score);
-        if (beta <= alpha) break; // cắt tỉa alpha-beta
-      }
-      return minScore;
-    }
-  }
-
-  // Hàm đánh giá đơn giản cho AI Medium
-  evaluateBoardSimple() {
-    let score = 0;
-    const winLength = this.getWinLength();
-
-    // Quét toàn bộ bàn cờ để tìm các dãy quân liên tiếp
-    for (let i = 0; i < this.size; i++) {
-      for (let j = 0; j < this.size; j++) {
-        // Kiểm tra 4 hướng: ngang, dọc, chéo chính, chéo phụ
-        const directions = [
-          [0, 1], // ngang
-          [1, 0], // dọc
-          [1, 1], // chéo chính
-          [1, -1], // chéo phụ
-        ];
-
-        for (const [dx, dy] of directions) {
-          // Đánh giá dãy quân AI
-          const aiLine = this.evaluateLineSimple(
-            i,
-            j,
-            dx,
-            dy,
-            this.aiPlayer,
-            winLength
-          );
-          score += aiLine;
-
-          // Đánh giá dãy quân đối thủ (để chặn)
-          const humanLine = this.evaluateLineSimple(
-            i,
-            j,
-            dx,
-            dy,
-            this.humanPlayer,
-            winLength
-          );
-          score -= humanLine;
-        }
-      }
-    }
-
-    // Thêm điểm cho vị trí trung tâm
-    const center = Math.floor(this.size / 2);
-    if (this.board[center] && this.board[center][center] === this.aiPlayer)
-      score += 2;
-    if (this.board[center] && this.board[center][center] === this.humanPlayer)
-      score -= 2;
-
-    return score;
-  }
-
-  // Hàm đánh giá dãy quân đơn giản
-  evaluateLineSimple(startRow, startCol, dx, dy, player, winLength) {
-    let count = 0; // số quân của player trong dãy
-    let empty = 0; // số ô trống trong dãy
-    let blocked = 0; // số đầu bị chặn
-
-    // Kiểm tra dãy có độ dài winLength
-    for (let k = 0; k < winLength; k++) {
-      const row = startRow + k * dx;
-      const col = startCol + k * dy;
-
-      if (row < 0 || row >= this.size || col < 0 || col >= this.size) {
-        blocked++;
-        continue;
-      }
-
-      if (this.board[row][col] === player) {
-        count++;
-      } else if (this.board[row][col] === "") {
-        empty++;
-      } else {
-        blocked++;
-      }
-    }
-
-    // Không xét dãy không có quân của player
-    if (count === 0) return 0;
-
-    // Chấm điểm đơn giản hơn cho AI Medium
-    let score = 0;
-
-    if (count >= winLength - 1 && empty >= 1 && blocked < 2) {
-      // Sắp thắng (4 quân liên tiếp trong dãy 5)
-      score += 1000;
-    } else if (count >= winLength - 2 && empty >= 2 && blocked < 2) {
-      // 3 quân liên tiếp có thể mở rộng
-      score += 100;
-    } else if (count >= 2 && empty >= 1 && blocked < 2) {
-      // 2 quân liên tiếp có thể mở rộng
-      score += 10;
-    } else if (count >= 1 && empty >= 1) {
-      // 1 quân có thể mở rộng
-      score += 1;
-    }
-
-    return score;
   }
 
   evaluateBoard() {
     let score = 0;
 
     // Đánh giá theo hàng, cột và đường chéo
-    score +=
-      this.evaluateLines(this.aiPlayer) - this.evaluateLines(this.humanPlayer);
+    if (this.difficulty === "medium") {
+      // Medium: đánh giá đơn giản hơn
+      score +=
+        this.evaluateLinesSimple(this.aiPlayer) -
+        this.evaluateLinesSimple(this.humanPlayer);
+    } else {
+      // Hard: đánh giá phức tạp
+      score +=
+        this.evaluateLines(this.aiPlayer) -
+        this.evaluateLines(this.humanPlayer);
+    }
 
     // Thêm điểm cho vị trí trung tâm
     const center = Math.floor(this.size / 2);
@@ -1501,19 +1277,70 @@ class TicTacToeAI {
     return score;
   }
 
+  evaluateLinesSimple(player) {
+    let score = 0;
+    const winLength = this.getWinLength();
+
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        const directions = [
+          [0, 1],
+          [1, 0],
+          [1, 1],
+          [1, -1],
+        ];
+        for (const [dx, dy] of directions) {
+          let count = 0;
+          let empty = 0;
+          let blocked = 0;
+
+          for (let k = 0; k < winLength; k++) {
+            const row = i + k * dx;
+            const col = j + k * dy;
+
+            if (row < 0 || row >= this.size || col < 0 || col >= this.size) {
+              blocked++;
+              continue;
+            }
+
+            if (this.board[row][col] === player) {
+              count++;
+            } else if (this.board[row][col] === "") {
+              empty++;
+            } else {
+              blocked++;
+            }
+          }
+
+          if (count === 0) continue;
+
+          if (count >= winLength - 1 && empty >= 1 && blocked < 2) {
+            score += 1000;
+          } else if (count >= winLength - 2 && empty >= 2 && blocked < 2) {
+            score += 100;
+          } else if (count >= 2 && empty >= 1 && blocked < 2) {
+            score += 10;
+          } else if (count >= 1 && empty >= 1) {
+            score += 1;
+          }
+        }
+      }
+    }
+
+    return score;
+  }
+
   evaluateLines(player) {
     let score = 0;
     const winLength = this.getWinLength();
 
-    // Đánh giá tất cả các đường có thể thắng
     for (let i = 0; i < this.size; i++) {
       for (let j = 0; j < this.size; j++) {
-        // Kiểm tra 4 hướng: ngang, dọc, chéo chính, chéo phụ
         const directions = [
-          [0, 1], // ngang
-          [1, 0], // dọc
-          [1, 1], // chéo chính
-          [1, -1], // chéo phụ
+          [0, 1],
+          [1, 0],
+          [1, 1],
+          [1, -1],
         ];
 
         for (const [dx, dy] of directions) {
@@ -1527,11 +1354,10 @@ class TicTacToeAI {
 
   evaluateLine(startRow, startCol, dx, dy, player, winLength) {
     let score = 0;
-    let count = 0; // số quân của player trong đoạn
-    let empty = 0; // số ô trống trong đoạn
-    let blocked = 0; // số đầu bị chặn bởi quân đối phương hoặc biên
+    let count = 0;
+    let empty = 0;
+    let blocked = 0;
 
-    // Kiểm tra đường thẳng có độ dài winLength
     for (let k = 0; k < winLength; k++) {
       const row = startRow + k * dx;
       const col = startCol + k * dy;
@@ -1550,28 +1376,22 @@ class TicTacToeAI {
       }
     }
 
-    // Không xét đoạn không có quân của player
     if (count === 0) return 0;
 
-    // Công thức chấm điểm heuristic
     if (blocked === 0) {
-      // Cả hai đầu đều mở
       if (count === winLength - 1 && empty === 1) {
-        score += 100000; // sắp thắng
+        score += 100000;
       } else {
-        score += Math.pow(10, count); // 10, 100, 1000, ...
+        score += Math.pow(10, count);
       }
     } else if (blocked === 1) {
-      // Một đầu bị chặn
       if (count === winLength - 1 && empty === 1) {
         score += 5000;
       } else {
-        score += Math.pow(10, count - 1); // 1, 10, 100, ...
+        score += Math.pow(10, count - 1);
       }
     } else {
-      // Hai đầu đều bị chặn: giá trị thấp
       if (count === winLength - 1 && empty === 0) {
-        // Đối thủ có thể thắng, vẫn nên quan tâm
         score += 100;
       }
     }
@@ -1582,7 +1402,6 @@ class TicTacToeAI {
   checkWinner() {
     const winLength = this.getWinLength();
 
-    // Kiểm tra hàng ngang
     for (let i = 0; i < this.size; i++) {
       for (let j = 0; j <= this.size - winLength; j++) {
         const line = [];
@@ -1597,7 +1416,6 @@ class TicTacToeAI {
       }
     }
 
-    // Kiểm tra hàng dọc
     for (let i = 0; i <= this.size - winLength; i++) {
       for (let j = 0; j < this.size; j++) {
         const line = [];
@@ -1612,7 +1430,6 @@ class TicTacToeAI {
       }
     }
 
-    // Kiểm tra đường chéo chính
     for (let i = 0; i <= this.size - winLength; i++) {
       for (let j = 0; j <= this.size - winLength; j++) {
         const line = [];
@@ -1627,7 +1444,6 @@ class TicTacToeAI {
       }
     }
 
-    // Kiểm tra đường chéo phụ
     for (let i = 0; i <= this.size - winLength; i++) {
       for (let j = winLength - 1; j < this.size; j++) {
         const line = [];
@@ -1668,7 +1484,6 @@ class TicTacToeAI {
   }
 
   getWinLength() {
-    // Độ dài cần thiết để thắng dựa trên kích thước bàn chơi
     if (this.size <= 3) return 3;
     if (this.size <= 5) return 4;
     return 5;
@@ -1715,7 +1530,6 @@ class TicTacToeAI {
     }
   }
 
-  // NEW: Lấy tên người chơi theo ký hiệu X hoặc O
   getPlayerName(symbol) {
     if (this.gameMode === "two") {
       if (symbol === "X") {
@@ -1749,7 +1563,6 @@ class TicTacToeAI {
         );
       }
     } else if (this.gameMode === "ai") {
-      // AI mode
       if (winner === this.humanPlayer) {
         status.textContent = "Bạn thắng!";
         this.scores.human++;
@@ -1768,29 +1581,25 @@ class TicTacToeAI {
         );
       }
     } else {
-      // Two player mode
       const winnerName = this.getPlayerName(winner);
       status.textContent = `${winnerName} thắng!`;
       this.scores[winner.toLowerCase()]++;
 
-      // Xác định người chơi thắng (1 = X, 2 = O)
       const winnerPlayer = winner === "X" ? 1 : 2;
       statsResult = this.userManager.updateUserStats(
-        "win", // Sẽ được xử lý bên trong updateUserStats cho 2 người
+        "win",
         this.gameMode,
         this.difficulty,
         winnerPlayer
       );
     }
 
-    // Hiển thị thông tin điểm đã nhận
     if (statsResult) {
       if (
         this.gameMode === "two" &&
         statsResult.player1 &&
         statsResult.player2
       ) {
-        // Chế độ 2 người: hiển thị điểm cho cả 2 người
         const player1Name =
           this.userManager.currentUser?.username || "Người chơi 1";
         const player2Name =
@@ -1803,7 +1612,6 @@ class TicTacToeAI {
           statsResult.player2.ratingChange > 0 ? "+" : ""
         }${statsResult.player2.ratingChange} điểm`;
       } else if (statsResult.ratingChange !== undefined) {
-        // Chế độ AI: hiển thị điểm cho người chơi hiện tại
         const difficultyText =
           statsResult.gameMode === "ai"
             ? ` (độ khó: ${statsResult.difficulty})`
@@ -1815,11 +1623,10 @@ class TicTacToeAI {
     }
 
     this.updateScore();
-    this.updateUserInfo(); // Update user info after game ends
-    this.updateUndoButton(); // Vô hiệu hóa nút lùi lại
-    this.updateRedoButton(); // Vô hiệu hóa nút làm lại
+    this.updateUserInfo();
+    this.updateUndoButton();
+    this.updateRedoButton();
 
-    // Vô hiệu hóa tất cả các ô
     const cells = document.querySelectorAll(".cell");
     cells.forEach((cell) => cell.classList.add("disabled"));
   }
@@ -1831,7 +1638,6 @@ class TicTacToeAI {
       document.getElementById("playerXScore").textContent = this.scores.human;
       document.getElementById("playerOScore").textContent = this.scores.ai;
     } else {
-      // Chế độ 2 người: hiển thị tên người chơi
       const player1Name =
         this.userManager.currentUser?.username || "Người chơi 1";
       const player2Name = this.userManager.player2?.username || "Người chơi 2";
@@ -1849,53 +1655,42 @@ class TicTacToeAI {
     document.getElementById("tieScore").textContent = this.scores.tie;
   }
 
-  // Chức năng lùi lại bước đã đi
   undoLastMove() {
     if (this.moveHistory.length === 0 || this.gameOver) {
-      return; // Không có nước đi nào để lùi lại hoặc game đã kết thúc
+      return;
     }
 
-    // Trong chế độ AI, cần lùi lại 2 nước đi (người chơi và AI)
     if (this.gameMode === "ai" && this.moveHistory.length >= 2) {
-      // Lùi lại nước đi của AI
       const aiMove = this.moveHistory.pop();
       this.board[aiMove.row][aiMove.col] = "";
 
-      // Lùi lại nước đi của người chơi
       const humanMove = this.moveHistory.pop();
       this.board[humanMove.row][humanMove.col] = "";
 
-      // Lưu các nước đi đã lùi vào redoHistory
       this.redoHistory.push(humanMove, aiMove);
 
-      // Khôi phục trạng thái
       this.currentPlayer = humanMove.previousPlayer;
       this.isAITurn = false;
     } else if (this.gameMode === "two" && this.moveHistory.length >= 1) {
-      // Trong chế độ 2 người, chỉ lùi lại 1 nước đi
       const lastMove = this.moveHistory.pop();
       this.board[lastMove.row][lastMove.col] = "";
 
-      // Lưu nước đi đã lùi vào redoHistory
       this.redoHistory.push(lastMove);
 
       this.currentPlayer = lastMove.previousPlayer;
     } else {
-      return; // Không đủ nước đi để lùi lại
+      return;
     }
 
-    // Cập nhật giao diện
     this.updateBoard();
     this.updateStatus();
     this.updateUndoButton();
-    this.updateRedoButton(); // Cập nhật trạng thái nút làm lại
+    this.updateRedoButton();
 
-    // Xóa highlight thắng nếu có
     const winningCells = document.querySelectorAll(".winning");
     winningCells.forEach((cell) => cell.classList.remove("winning"));
   }
 
-  // Cập nhật trạng thái nút lùi lại
   updateUndoButton() {
     const undoButton = document.getElementById("undoMove");
 
@@ -1905,54 +1700,44 @@ class TicTacToeAI {
     }
 
     if (this.gameMode === "ai") {
-      // Trong chế độ AI, cần ít nhất 2 nước đi và không phải lượt AI
       undoButton.disabled = this.moveHistory.length < 2 || this.isAITurn;
     } else {
-      // Trong chế độ 2 người, cần ít nhất 1 nước đi
       undoButton.disabled = this.moveHistory.length < 1;
     }
   }
 
-  // Chức năng khôi phục lại bước đã lùi
   redoMove() {
     if (this.redoHistory.length === 0 || this.gameOver) {
-      return; // Không có nước đi nào để khôi phục hoặc game đã kết thúc
+      return;
     }
 
-    // Trong chế độ AI, cần khôi phục 2 nước đi (người chơi và AI)
     if (this.gameMode === "ai" && this.redoHistory.length >= 2) {
-      // Khôi phục nước đi của người chơi
       const humanMove = this.redoHistory.shift();
       this.board[humanMove.row][humanMove.col] = humanMove.player;
       this.moveHistory.push(humanMove);
 
-      // Khôi phục nước đi của AI
       const aiMove = this.redoHistory.shift();
       this.board[aiMove.row][aiMove.col] = aiMove.player;
       this.moveHistory.push(aiMove);
 
-      // Khôi phục trạng thái
       this.currentPlayer = aiMove.player === "X" ? "O" : "X";
       this.isAITurn = false;
     } else if (this.gameMode === "two" && this.redoHistory.length >= 1) {
-      // Trong chế độ 2 người, chỉ khôi phục 1 nước đi
       const move = this.redoHistory.shift();
       this.board[move.row][move.col] = move.player;
       this.moveHistory.push(move);
 
       this.currentPlayer = move.player === "X" ? "O" : "X";
     } else {
-      return; // Không đủ nước đi để khôi phục
+      return;
     }
 
-    // Cập nhật giao diện
     this.updateBoard();
     this.updateStatus();
     this.updateUndoButton();
     this.updateRedoButton();
   }
 
-  // Cập nhật trạng thái nút làm lại
   updateRedoButton() {
     const redoButton = document.getElementById("redoMove");
 
@@ -1962,20 +1747,15 @@ class TicTacToeAI {
     }
 
     if (this.gameMode === "ai") {
-      // Trong chế độ AI, cần ít nhất 2 nước đi trong redoHistory và không phải lượt AI
       redoButton.disabled = this.redoHistory.length < 2 || this.isAITurn;
     } else {
-      // Trong chế độ 2 người, cần ít nhất 1 nước đi trong redoHistory
       redoButton.disabled = this.redoHistory.length < 1;
     }
   }
 }
 
-// Khởi tạo game khi trang được load
 let gameInstance = null;
 document.addEventListener("DOMContentLoaded", () => {
   gameInstance = new TicTacToeAI();
-  window.game = gameInstance; // Make it globally accessible
+  window.game = gameInstance;
 });
-
-// ----------------
