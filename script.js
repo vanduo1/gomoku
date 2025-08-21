@@ -4,7 +4,7 @@ class UserManager {
     this.currentUser = null;
     this.player2 = null; // NEW: Người chơi thứ 2 cho chế độ 2 người
     this.users = this.loadUsers();
-    this.recalculateAllLevels(); // Recalculate levels on initialization
+    this.initializeUserStats(); // Initialize user stats on initialization
   }
 
   loadUsers() {
@@ -28,18 +28,12 @@ class UserManager {
     localStorage.setItem("caroUsers", JSON.stringify(this.users));
   }
 
-  recalculateAllLevels() {
+  initializeUserStats() {
     // Đảm bảo tất cả user có rating
     let updated = false;
     this.users.forEach((user) => {
       if (typeof user.stats.rating !== "number") {
         user.stats.rating = 0;
-        updated = true;
-      }
-
-      // Migration: nếu có điểm cũ thì chuyển đổi sang rating
-      if (user.stats.points > 0 && user.stats.rating === 0) {
-        user.stats.rating = Math.floor(user.stats.points / 2); // Chuyển đổi từ hệ thống cũ
         updated = true;
       }
     });
@@ -266,207 +260,19 @@ class UserManager {
     };
   }
 
-  // Lấy hạng bậc theo điểm Elo
-  getRankFromRating(rating) {
-    if (rating >= 800) return "Kim Cương";
-    if (rating >= 600) return "Bạch Kim";
-    if (rating >= 400) return "Vàng";
-    if (rating >= 200) return "Bạc";
-    return "Đồng";
-  }
 
-  // Lấy màu sắc cho hạng bậc
-  getRankColor(rank) {
-    const colors = {
-      "Kim Cương": "#00d4ff",
-      "Bạch Kim": "#e5e5e5",
-      Vàng: "#ffd700",
-      Bạc: "#c0c0c0",
-      Đồng: "#cd7f32",
-    };
-    return colors[rank] || "#666";
-  }
 
-  calculateLevel(stats) {
-    // CÁCH TÍNH LEVEL ĐƠN GIẢN:
-    // Level = Điểm chia cho 100, tối thiểu level 1
 
-    let level = Math.floor(stats.points / 100) + 1;
 
-    // Đảm bảo pointsBreakdown tồn tại
-    if (!stats.pointsBreakdown) {
-      stats.pointsBreakdown = {
-        aiEasy: { wins: 0, losses: 0, draws: 0, points: 0 },
-        aiMedium: { wins: 0, losses: 0, draws: 0, points: 0 },
-        aiHard: { wins: 0, losses: 0, draws: 0, points: 0 },
-        human: { wins: 0, losses: 0, draws: 0, points: 0 },
-      };
-    }
 
-    // Thưởng theo tỷ lệ thắng riêng cho từng độ khó
-    let difficultyBonus = 0;
 
-    // Tỷ lệ thắng AI Hard ≥50%: +2 level
-    const hardTotal =
-      stats.pointsBreakdown.aiHard.wins + stats.pointsBreakdown.aiHard.losses;
-    if (hardTotal >= 5) {
-      // Tối thiểu 5 trận
-      const hardWinRate = stats.pointsBreakdown.aiHard.wins / hardTotal;
-      if (hardWinRate >= 0.5) {
-        difficultyBonus += 2;
-      }
-    }
 
-    // Tỷ lệ thắng AI Medium ≥70%: +1 level
-    const mediumTotal =
-      stats.pointsBreakdown.aiMedium.wins +
-      stats.pointsBreakdown.aiMedium.losses;
-    if (mediumTotal >= 10) {
-      // Tối thiểu 10 trận
-      const mediumWinRate = stats.pointsBreakdown.aiMedium.wins / mediumTotal;
-      if (mediumWinRate >= 0.7) {
-        difficultyBonus += 1;
-      }
-    }
 
-    // Tỷ lệ thắng người thật ≥60%: +2 level
-    const humanTotal =
-      stats.pointsBreakdown.human.wins + stats.pointsBreakdown.human.losses;
-    if (humanTotal >= 5) {
-      // Tối thiểu 5 trận
-      const humanWinRate = stats.pointsBreakdown.human.wins / humanTotal;
-      if (humanWinRate >= 0.6) {
-        difficultyBonus += 2;
-      }
-    }
 
-    level += difficultyBonus;
 
-    // Thưởng thêm cho người chơi nhiều (kinh nghiệm)
-    const experienceBonus = Math.floor(stats.totalGames / 50); // 1 level per 50 games
-    level += experienceBonus;
 
-    // Đảm bảo level từ 1 đến 50
-    level = Math.max(1, level);
-    level = Math.min(50, level);
 
-    return level;
-  }
 
-  showLevelUpNotification(level) {
-    document.getElementById("newLevelText").textContent = level;
-    document.getElementById("levelUpNotification").classList.remove("hidden");
-  }
-
-  // Phương thức mới để hiển thị thông tin chi tiết về bonus level
-  getLevelBonusInfo(stats) {
-    if (!stats.pointsBreakdown) {
-      return "Chưa có dữ liệu chi tiết.";
-    }
-
-    let info = "📊 Thông tin bonus level:\n\n";
-
-    // AI Hard bonus
-    const hardTotal =
-      stats.pointsBreakdown.aiHard.wins + stats.pointsBreakdown.aiHard.losses;
-    const hardWinRate =
-      hardTotal > 0
-        ? ((stats.pointsBreakdown.aiHard.wins / hardTotal) * 100).toFixed(1)
-        : 0;
-    const hardBonus =
-      hardTotal >= 5 && hardWinRate >= 50 ? "✅ +2 level" : "❌ Chưa đạt";
-    info += `🔥 AI Hard: ${stats.pointsBreakdown.aiHard.wins}/${hardTotal} (${hardWinRate}%) - ${hardBonus}\n`;
-    info += `   Yêu cầu: ≥50% trong ít nhất 5 trận\n\n`;
-
-    // AI Medium bonus
-    const mediumTotal =
-      stats.pointsBreakdown.aiMedium.wins +
-      stats.pointsBreakdown.aiMedium.losses;
-    const mediumWinRate =
-      mediumTotal > 0
-        ? ((stats.pointsBreakdown.aiMedium.wins / mediumTotal) * 100).toFixed(1)
-        : 0;
-    const mediumBonus =
-      mediumTotal >= 10 && mediumWinRate >= 70 ? "✅ +1 level" : "❌ Chưa đạt";
-    info += `⚡ AI Medium: ${stats.pointsBreakdown.aiMedium.wins}/${mediumTotal} (${mediumWinRate}%) - ${mediumBonus}\n`;
-    info += `   Yêu cầu: ≥70% trong ít nhất 10 trận\n\n`;
-
-    // Human bonus
-    const humanTotal =
-      stats.pointsBreakdown.human.wins + stats.pointsBreakdown.human.losses;
-    const humanWinRate =
-      humanTotal > 0
-        ? ((stats.pointsBreakdown.human.wins / humanTotal) * 100).toFixed(1)
-        : 0;
-    const humanBonus =
-      humanTotal >= 5 && humanWinRate >= 60 ? "✅ +2 level" : "❌ Chưa đạt";
-    info += `👥 Vs Human: ${stats.pointsBreakdown.human.wins}/${humanTotal} (${humanWinRate}%) - ${humanBonus}\n`;
-    info += `   Yêu cầu: ≥60% trong ít nhất 5 trận\n\n`;
-
-    // Experience bonus
-    const expBonus = Math.floor(stats.totalGames / 50);
-    info += `🎯 Kinh nghiệm: ${stats.totalGames} trận - +${expBonus} level\n`;
-    info += `   (1 level mỗi 50 trận)\n`;
-
-    return info;
-  }
-
-  getUserLevel(points) {
-    // Use the same calculation method for consistency
-    const dummyStats = {
-      points: points,
-      wins: 0,
-      losses: 0,
-      totalGames: 0,
-    };
-    const level = this.calculateLevel(dummyStats);
-
-    // Return level titles based on calculated level
-    if (level >= 80) return "Grandmaster";
-    if (level >= 60) return "Master";
-    if (level >= 40) return "Expert";
-    if (level >= 25) return "Advanced";
-    if (level >= 15) return "Intermediate";
-    if (level >= 8) return "Amateur";
-    if (level >= 3) return "Novice";
-    return "Beginner";
-  }
-
-  getLevelBreakdown(stats) {
-    const pointsLevel = Math.floor(stats.points / 30) + 1;
-
-    // Cập nhật tính tỷ lệ thắng: chỉ tính thắng/(thắng+thua), không tính hòa
-    const decisiveGames = stats.wins + stats.losses;
-    const winRate = decisiveGames > 0 ? stats.wins / decisiveGames : 0;
-
-    const winRateBonus = decisiveGames >= 10 ? Math.floor(winRate * 20) : 0;
-    const experienceBonus = Math.floor(stats.totalGames / 25);
-    const lossRate = decisiveGames > 0 ? stats.losses / decisiveGames : 0;
-    const consistencyBonus =
-      decisiveGames >= 20 ? Math.floor((1 - lossRate) * 10) : 0;
-
-    return {
-      baseLevel: pointsLevel,
-      winRateBonus: winRateBonus,
-      experienceBonus: experienceBonus,
-      consistencyBonus: consistencyBonus,
-      finalLevel: this.calculateLevel(stats),
-      winRate: (winRate * 100).toFixed(1),
-      totalGames: stats.totalGames,
-    };
-  }
-
-  getPointsBreakdown(stats) {
-    if (!stats.pointsBreakdown) {
-      return {
-        aiEasy: { wins: 0, losses: 0, draws: 0, points: 0 },
-        aiMedium: { wins: 0, losses: 0, draws: 0, points: 0 },
-        aiHard: { wins: 0, losses: 0, draws: 0, points: 0 },
-        human: { wins: 0, losses: 0, draws: 0, points: 0 },
-      };
-    }
-    return stats.pointsBreakdown;
-  }
 
   getLeaderboard(sortBy = "rating") {
     const leaderboard = this.users.map((user) => {
@@ -478,13 +284,11 @@ class UserManager {
           : 0;
 
       const rating = user.stats.rating || 0;
-      const rank = this.getRankFromRating(rating);
 
       return {
         ...user,
         winRate: winRate,
         rating: rating,
-        rank: rank,
       };
     });
 
@@ -574,11 +378,6 @@ class TicTacToeAI {
 
     document.getElementById("sortBy").addEventListener("change", () => {
       this.updateLeaderboard();
-    });
-
-    // Level up notification
-    document.getElementById("closeLevelUp").addEventListener("click", () => {
-      document.getElementById("levelUpNotification").classList.add("hidden");
     });
 
     // Game event listeners
