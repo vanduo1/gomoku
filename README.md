@@ -54,7 +54,4 @@ carofinal/
 
 The AI uses a **Minimax algorithm** with alpha-beta pruning and a heuristic board evaluator. Search depth is automatically scaled based on board size to keep response times fast.
 
-## License
-
-MIT
 
